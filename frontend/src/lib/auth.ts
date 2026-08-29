@@ -9,11 +9,16 @@ type Credentials = {
 // The backend returns the Supabase auth payload; tolerate both a flat session
 // and one nested under `session`, since Supabase clients expose both shapes.
 type AuthResponse = {
+  user_id?: string | null;
   access_token?: string;
   refresh_token?: string | null;
   session?: {
     access_token?: string;
     refresh_token?: string | null;
+    user?: {
+      id?: string | null;
+      email?: string | null;
+    } | null;
   } | null;
   user?: {
     id?: string | null;
@@ -30,8 +35,8 @@ function toSession(response: AuthResponse): Session {
   return {
     accessToken,
     refreshToken: response.refresh_token ?? response.session?.refresh_token ?? null,
-    playerId: response.user?.id ?? null,
-    email: response.user?.email ?? null,
+    playerId: response.user_id ?? response.user?.id ?? response.session?.user?.id ?? null,
+    email: response.user?.email ?? response.session?.user?.email ?? null,
   };
 }
 

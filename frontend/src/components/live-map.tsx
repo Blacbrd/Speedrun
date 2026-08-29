@@ -13,11 +13,12 @@ const MapboxNativeMap = lazy(() => import('./mapbox-native-map'));
 
 const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
-type RoomMapProps = {
+type LiveMapProps = {
   center: Coordinates;
 };
 
-export default function RoomMap({ center }: RoomMapProps) {
+// Shared by the setup and run screens: the player's live position on Mapbox.
+export default function LiveMap({ center }: LiveMapProps) {
   if (!MAPBOX_TOKEN) {
     return (
       <View style={styles.placeholder}>

@@ -6,6 +6,7 @@ import { verifyTaskPhoto, type Verification } from '../lib/verification';
 type Options = {
   taskId: string;
   playerId?: string | null;
+  runId?: string | null;
   token?: string;
 };
 
@@ -34,31 +35,40 @@ async function pickPhoto(source: Source): Promise<string | null> {
   return result.assets[0].uri;
 }
 
-export function usePhotoVerification({ taskId, playerId, token }: Options) {
+export function usePhotoVerification({ taskId, playerId, runId, token }: Options) {
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [verification, setVerification] = useState<Verification | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
 
   const submit = useCallback(
-    async (source: Source) => {
+    async (source: Source): Promise<Verification | null> => {
       setError(null);
       setVerification(null);
       try {
         const uri = await pickPhoto(source);
         if (!uri) {
-          return;
+          return null;
         }
         setPhotoUri(uri);
         setVerifying(true);
-        setVerification(await verifyTaskPhoto({ taskId, photoUri: uri, playerId, token }));
+        const result = await verifyTaskPhoto({
+          taskId,
+          photoUri: uri,
+          playerId,
+          runId,
+          token,
+        });
+        setVerification(result);
+        return result;
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : 'Verification failed');
+        return null;
       } finally {
         setVerifying(false);
       }
     },
-    [playerId, taskId, token],
+    [playerId, runId, taskId, token],
   );
 
   return { photoUri, verification, error, verifying, submit };

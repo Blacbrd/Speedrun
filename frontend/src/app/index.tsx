@@ -15,14 +15,14 @@ export default function Index() {
     );
   }
 
-  return <Redirect href={session ? '/room' : '/sign-in'} />;
+  return <Redirect href={session ? '/home' : '/sign-in'} />;
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.background,
   },
 });

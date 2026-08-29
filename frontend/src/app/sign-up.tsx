@@ -11,7 +11,7 @@ import { saveSession } from '../lib/session-store';
 export default function SignUp() {
   const submit = async (email: string, password: string) => {
     await saveSession(await signUp({ email, password }));
-    router.replace('/room');
+    router.replace('/home');
   };
 
   return (
