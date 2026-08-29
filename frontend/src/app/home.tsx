@@ -40,17 +40,17 @@ export default function Home() {
           tagline="Hit the pad, pick a mode, and start hunting photos."
         />
 
-        <StatStrip
-          stats={[
-            { label: 'Mode', value: 'Solo' },
-            { label: 'Tasks', value: '5' },
-            { label: 'Gps', value: 'On' },
-          ]}
-        />
+        <View style={styles.hero}>
+          <StatStrip
+            stats={[
+              { label: 'Best time', value: '04:12' },
+              { label: 'Races won', value: '3' },
+              { label: 'Total runs', value: '11' },
+            ]}
+          />
 
-        <View style={styles.spacer} />
-
-        <RunButton caption="Start a session" onPress={() => router.push('/mode-select')} />
+          <RunButton caption="Start a session" onPress={() => router.push('/mode-select')} />
+        </View>
 
         <Pressable
           style={styles.signOut}
@@ -80,12 +80,14 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.lg,
-    paddingBottom: spacing.xl,
-    gap: spacing.lg,
+    paddingBottom: spacing.lg,
+    gap: spacing.md,
     alignItems: 'stretch',
   },
-  spacer: {
+  hero: {
     flex: 1,
+    justifyContent: 'center',
+    gap: spacing.xl,
   },
   signOut: {
     alignSelf: 'center',

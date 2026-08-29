@@ -14,14 +14,14 @@ module.exports = ({ config }) => ({
     [
       'expo-location',
       {
-        locationWhenInUsePermission: 'Speedrun uses your location to start a task run near you.',
+        locationWhenInUsePermission: 'Speedrunners uses your location to start a task run near you.',
       },
     ],
     [
       'expo-image-picker',
       {
-        cameraPermission: 'Speedrun needs your camera to photograph scavenger-hunt tasks.',
-        photosPermission: 'Speedrun needs your photos to submit scavenger-hunt tasks.',
+        cameraPermission: 'Speedrunners needs your camera to photograph scavenger-hunt tasks.',
+        photosPermission: 'Speedrunners needs your photos to submit scavenger-hunt tasks.',
       },
     ],
     'expo-secure-store',
