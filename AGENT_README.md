@@ -20,7 +20,7 @@ Speedrun is a Strava-style **photo scavenger hunt**: a player starts a timed "ru
 
 Pydantic mirrors: `backend/schemas/{player,run,task,friendship,verification}.py`.
 
-**Known gap**: `backend/.env`'s `SUPABASE_KEY` is currently behaving like the anon key, not the service-role key the backend needs to act as a trusted server. Until it's replaced, some writes (photo upload, `player_tasks`/`runs` writes) rely on temporarily-public RLS policies plus the backend's own `player_id`/`run_id` scoping in code, not DB-enforced isolation. If you hit an RLS error on a write that looks correct, this is why — don't paper over it with more permissive policies without flagging it; ask first.
+`backend/.env`'s `SUPABASE_KEY` is now the real service-role key (was briefly the anon/publishable key by mistake — fixed). RLS policies are back to strict `auth.uid()`-scoped ones on `player_tasks`, `runs`, and the `task-photos` bucket; the service-role backend bypasses them as intended and does its own `player_id`/`run_id` scoping in code. If you ever hit an RLS error on a backend write that looks correct, don't loosen policies to fix it — that almost certainly means the wrong key is loaded again; check `backend/.env` and ask before changing any RLS policy.
 
 ### Backend endpoints (FastAPI, all under `/api`)
 
