@@ -8,7 +8,7 @@ This is a hackathon project built while mobile (phone-only testing, no laptop ac
 
 ## 1. Current state (as of last update)
 
-Speedrun is a Strava-style **photo scavenger hunt**: a player starts a timed "run," gets a list of photo tasks ("take a picture of a red car"), and Gemini judges each submitted photo accept/deny. Singleplayer is the current focus; multiplayer is a placeholder button, not built.
+Speedrun is a Strava-style **photo scavenger hunt**: a player starts a timed "run," gets a list of photo tasks ("take a picture of a red car"), and Gemini judges each submitted photo accept/deny. Singleplayer is the core loop; head-to-head multiplayer (invite → ready → shared five tasks → countdown from a server `ends_at`) is built on top of it.
 
 ### Data model (Supabase - all live, see `backend/db/seed_tasks.sql` for the migration history)
 
@@ -43,13 +43,15 @@ Pydantic mirrors: `backend/schemas/{player,run,task,friendship,verification}.py`
 
 The two parallel frontends have been reconciled on PR #2 (`devin/1788005848-frontend-auth-map`) into the single flow of section 1a; `main`'s placeholder set (`login`/`signup`/`home`/`run`/`singleplayer`, `AuthForm`/`Button`/`TextField`/`MapPanel`/`TaskList`, `theme.ts`) and PR #2's old `room.tsx` are both gone.
 
-Current routes: `index` (session gate) → `sign-in`/`sign-up` → `home` (circular Run! pad) → `mode-select` → `singleplayer` (live map + `/api/tasks/random` + Regenerate + Start run!) → `run` (count-up timer, 80% Mapbox map, top-right task overlay, End run) → `camera` (photo → `/api/gemini/verify`, retry on `response: false`).
+Current routes: `index` (session gate) → `sign-in`/`sign-up` → `home` (circular Run! pad) → `mode-select` → `singleplayer` (live map + `/api/tasks/random` + Regenerate + Start run!) → `run` (count-up timer, 80% Mapbox map, top-right task overlay, End run) → `camera` (photo → `/api/gemini/verify`, retry on `response: false`); the multiplayer lane is `mode-select` (friend invite modal) → `match` (lobby/room) → `match-camera` (photo → `/api/matches/{id}/verify`).
 
 Supporting code: reusable UI in `components/` (kebab-case files: `auth-screen`, `auth-form`, `brand-header`, `stat-strip`, `track-backdrop`, `primary-button`, `secondary-button`, `text-field`, `run-button`, `task-list`, `task-overlay`, `live-map` + `mapbox-native-map{,.web}`/`mapbox-webview-map`); API clients per resource in `lib/` (`api.ts` transport, `auth.ts`, `tasks.ts`, `runs.ts`, `verification.ts`) with the session in `expo-secure-store` via `lib/session-store.ts`; hooks in `hooks/` (`use-session`, `use-current-location`, `use-random-tasks`, `use-photo-verification`, `use-elapsed-seconds`, and `use-active-run` — the context holding `run_id` + task list + completed ids shared between the run and camera screens).
 
+Multiplayer-specific frontend code: `lib/supabase.ts` (anon-key Supabase JS client; `attachSupabaseSession` replays the backend session via `auth.setSession` so Realtime passes RLS — the service-role key must never appear in `frontend/`), `lib/matches.ts` (all `/api/matches` calls), `lib/players.ts` (resolves the two test accounts' player ids), `components/{friend-invite-modal,time-limit-picker,match-scoreboard,hud-toast}`, hooks `use-match-room` (Realtime on `matches`/`match_players`/`match_tasks`, REST polling fallback when `EXPO_PUBLIC_SUPABASE_*` is unset), `use-invite-listener`, `use-location-broadcast`, `use-remaining-seconds` (countdown from the server `ends_at`), `use-match-verification`.
+
 **Mapbox**: `EXPO_PUBLIC_MAPBOX_TOKEN` is set in `frontend/.env` (gitignored, ask the human for the value, don't invent one) and the Mapbox MCP server (`mapbox-mcp`) is installed for tool access. **Stay within Mapbox's free tier** (50k free map loads/month on the pk. token used here) — this is a hackathon demo, not production traffic; don't loop map reloads, don't hit the API in a tight loop while testing, and flag it to the human before doing anything that could run up usage (e.g. automated screenshot loops hitting live tiles).
 
-### Multiplayer (backend done, frontend not built yet - see `multiplayer.md`)
+### Multiplayer (backend + frontend built - see `multiplayer.md`)
 
 Two players compete head-to-head via `matches`/`match_players`/`match_tasks` tables + Supabase Realtime (Postgres Changes) - full endpoint reference, Realtime/RLS setup, and a two-device testing walkthrough are in `multiplayer.md`, don't duplicate that here. Two real test accounts already exist for this: `blacbrd123@gmail.com` and `aayanjatala@icloud.com`.
 

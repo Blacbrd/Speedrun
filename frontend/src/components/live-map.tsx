@@ -14,10 +14,12 @@ import MapboxWebViewMap from './mapbox-webview-map';
 
 type LiveMapProps = {
   center: Coordinates;
+  opponent?: Coordinates | null;
 };
 
-// Shared by the setup and run screens: the player's live position on Mapbox.
-export default function LiveMap({ center }: LiveMapProps) {
+// Shared by the setup, run and match screens: the player's live position on
+// Mapbox, plus the opponent's marker during a multiplayer match.
+export default function LiveMap({ center, opponent = null }: LiveMapProps) {
   if (!MAPBOX_TOKEN) {
     return (
       <View style={styles.placeholder}>
@@ -28,7 +30,7 @@ export default function LiveMap({ center }: LiveMapProps) {
     );
   }
 
-  return <MapboxWebViewMap center={center} />;
+  return <MapboxWebViewMap center={center} opponent={opponent} />;
 }
 
 const styles = StyleSheet.create({

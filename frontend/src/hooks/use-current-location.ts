@@ -7,7 +7,8 @@ export type Coordinates = {
 };
 
 // `enabled` defers the permission prompt until the caller is ready to show a map.
-export function useCurrentLocation(enabled = true) {
+// `watch` keeps the fix updating, which matches need so the opponent sees movement.
+export function useCurrentLocation(enabled = true, watch = false) {
   const [coordinates, setCoordinates] = useState<Coordinates | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -40,6 +41,40 @@ export function useCurrentLocation(enabled = true) {
       request();
     }
   }, [enabled, request]);
+
+  useEffect(() => {
+    if (!enabled || !watch || !coordinates) {
+      return;
+    }
+
+    let subscription: Location.LocationSubscription | null = null;
+    let cancelled = false;
+
+    Location.watchPositionAsync(
+      { accuracy: Location.Accuracy.Balanced, timeInterval: 5000, distanceInterval: 10 },
+      (position) => {
+        setCoordinates({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+      },
+    )
+      .then((handle) => {
+        if (cancelled) {
+          handle.remove();
+          return;
+        }
+        subscription = handle;
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+      subscription?.remove();
+    };
+    // Only the first fix arms the watcher; later updates come from it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, watch, coordinates !== null]);
 
   return { coordinates, error, loading, retry: request };
 }

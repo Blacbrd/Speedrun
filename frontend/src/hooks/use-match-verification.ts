@@ -1,23 +1,24 @@
 import { useCallback, useState } from 'react';
 
+import { verifyMatchPhoto, type MatchVerification } from '../lib/matches';
 import { pickPhoto, type PhotoSource } from '../lib/photo';
-import { verifyTaskPhoto, type Verification } from '../lib/verification';
 
 type Options = {
+  matchId: string;
   taskId: string;
-  playerId?: string | null;
-  runId?: string | null;
+  playerId: string;
   token?: string;
 };
 
-export function usePhotoVerification({ taskId, playerId, runId, token }: Options) {
+// Same shape as usePhotoVerification, but scored against a match.
+export function useMatchVerification({ matchId, taskId, playerId, token }: Options) {
   const [photoUri, setPhotoUri] = useState<string | null>(null);
-  const [verification, setVerification] = useState<Verification | null>(null);
+  const [verification, setVerification] = useState<MatchVerification | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
 
   const submit = useCallback(
-    async (source: PhotoSource): Promise<Verification | null> => {
+    async (source: PhotoSource): Promise<MatchVerification | null> => {
       setError(null);
       setVerification(null);
       try {
@@ -27,13 +28,7 @@ export function usePhotoVerification({ taskId, playerId, runId, token }: Options
         }
         setPhotoUri(uri);
         setVerifying(true);
-        const result = await verifyTaskPhoto({
-          taskId,
-          photoUri: uri,
-          playerId,
-          runId,
-          token,
-        });
+        const result = await verifyMatchPhoto({ matchId, taskId, playerId, photoUri: uri, token });
         setVerification(result);
         return result;
       } catch (caught) {
@@ -43,7 +38,7 @@ export function usePhotoVerification({ taskId, playerId, runId, token }: Options
         setVerifying(false);
       }
     },
-    [playerId, runId, taskId, token],
+    [matchId, playerId, taskId, token],
   );
 
   return { photoUri, verification, error, verifying, submit };
