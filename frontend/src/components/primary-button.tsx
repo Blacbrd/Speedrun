@@ -1,7 +1,7 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
 
 import { colors } from '../constants/colors';
-import { radius, spacing, typography } from '../constants/theme';
+import { radius, shadow, spacing, typography } from '../constants/theme';
 
 type PrimaryButtonProps = {
   label: string;
@@ -16,17 +16,21 @@ export default function PrimaryButton({
   disabled = false,
   loading = false,
 }: PrimaryButtonProps) {
+  const inactive = disabled || loading;
+
   return (
     <Pressable
       style={({ pressed }) => [
         styles.button,
+        !inactive && shadow('button'),
         pressed && styles.buttonPressed,
-        (disabled || loading) && styles.buttonDisabled,
+        inactive && styles.buttonDisabled,
       ]}
       onPress={onPress}
-      disabled={disabled || loading}
+      disabled={inactive}
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityState={{ disabled: inactive, busy: loading }}
     >
       {loading ? (
         <ActivityIndicator color={colors.accentText} />
@@ -40,21 +44,23 @@ export default function PrimaryButton({
 const styles = StyleSheet.create({
   button: {
     backgroundColor: colors.accent,
-    borderRadius: radius.md,
+    borderRadius: radius.pill,
     paddingVertical: spacing.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 52,
+    minHeight: 56,
   },
   buttonPressed: {
-    opacity: 0.85,
+    transform: [{ scale: 0.99 }],
+    opacity: 0.9,
   },
   buttonDisabled: {
-    opacity: 0.45,
+    backgroundColor: colors.borderStrong,
   },
   label: {
     color: colors.accentText,
     fontSize: typography.body,
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
 });

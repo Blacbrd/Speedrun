@@ -42,6 +42,7 @@ export default function AuthForm({ submitLabel, onSubmit }: AuthFormProps) {
         value={email}
         onChangeText={setEmail}
         placeholder="you@example.com"
+        invalid={Boolean(error)}
         autoCapitalize="none"
         autoCorrect={false}
         autoComplete="email"
@@ -57,6 +58,7 @@ export default function AuthForm({ submitLabel, onSubmit }: AuthFormProps) {
         value={password}
         onChangeText={setPassword}
         placeholder="••••••••"
+        invalid={Boolean(error)}
         autoCapitalize="none"
         autoCorrect={false}
         secureTextEntry
@@ -67,6 +69,7 @@ export default function AuthForm({ submitLabel, onSubmit }: AuthFormProps) {
 
       {error ? (
         <View style={styles.errorBox}>
+          <View style={styles.errorBar} />
           <Text style={styles.errorText}>{error}</Text>
         </View>
       ) : null}
@@ -83,16 +86,27 @@ export default function AuthForm({ submitLabel, onSubmit }: AuthFormProps) {
 
 const styles = StyleSheet.create({
   container: {
-    gap: spacing.lg,
+    gap: spacing.xl,
   },
   errorBox: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: spacing.md,
     backgroundColor: colors.errorSurface,
     borderRadius: radius.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
+    padding: spacing.md,
+    marginTop: -spacing.sm,
+  },
+  errorBar: {
+    width: 3,
+    borderRadius: radius.pill,
+    backgroundColor: colors.error,
   },
   errorText: {
+    flex: 1,
     color: colors.error,
     fontSize: typography.caption,
+    lineHeight: 20,
+    fontWeight: '500',
   },
 });

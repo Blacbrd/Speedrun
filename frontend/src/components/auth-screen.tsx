@@ -3,17 +3,19 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 're
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors } from '../constants/colors';
-import { spacing } from '../constants/theme';
+import { radius, shadow, spacing } from '../constants/theme';
 import BrandHeader from './brand-header';
 
 type AuthScreenProps = {
+  title: string;
   tagline: string;
   children: ReactNode;
+  footer?: ReactNode;
 };
 
-// Shared shell for sign-in / sign-up: brand area on top, form below,
-// keyboard-aware and centred with iPhone-friendly spacing.
-export default function AuthScreen({ tagline, children }: AuthScreenProps) {
+// Shared shell for sign-in / sign-up: brand area, card-wrapped form, footer link.
+// Keyboard-aware and centred with iPhone-friendly spacing.
+export default function AuthScreen({ title, tagline, children, footer }: AuthScreenProps) {
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <KeyboardAvoidingView
@@ -25,10 +27,9 @@ export default function AuthScreen({ tagline, children }: AuthScreenProps) {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.header}>
-            <BrandHeader tagline={tagline} />
-          </View>
-          {children}
+          <BrandHeader title={title} tagline={tagline} />
+          <View style={[styles.card, shadow('card')]}>{children}</View>
+          {footer ? <View style={styles.footer}>{footer}</View> : null}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -47,10 +48,17 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.xxl,
+    paddingVertical: spacing.xxxl,
     gap: spacing.xxl,
   },
-  header: {
-    marginBottom: spacing.sm,
+  card: {
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.xl,
+  },
+  footer: {
+    alignItems: 'center',
   },
 });

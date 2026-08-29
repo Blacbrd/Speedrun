@@ -1,36 +1,65 @@
 import { forwardRef, useState } from 'react';
-import { StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  type TextInputProps,
+} from 'react-native';
 
 import { colors } from '../constants/colors';
 import { radius, spacing, typography } from '../constants/theme';
 
 type TextFieldProps = TextInputProps & {
   label: string;
+  invalid?: boolean;
 };
 
 const TextField = forwardRef<TextInput, TextFieldProps>(function TextField(
-  { label, style, onFocus, onBlur, ...inputProps },
+  { label, invalid = false, secureTextEntry, style, onFocus, onBlur, ...inputProps },
   ref,
 ) {
   const [focused, setFocused] = useState(false);
+  const [revealed, setRevealed] = useState(false);
 
   return (
     <View style={styles.container}>
       <Text style={styles.label}>{label}</Text>
-      <TextInput
-        ref={ref}
-        style={[styles.input, focused && styles.inputFocused, style]}
-        placeholderTextColor={colors.placeholder}
-        onFocus={(event) => {
-          setFocused(true);
-          onFocus?.(event);
-        }}
-        onBlur={(event) => {
-          setFocused(false);
-          onBlur?.(event);
-        }}
-        {...inputProps}
-      />
+      <View
+        style={[
+          styles.field,
+          focused && styles.fieldFocused,
+          invalid && styles.fieldInvalid,
+        ]}
+      >
+        <TextInput
+          ref={ref}
+          style={[styles.input, style]}
+          placeholderTextColor={colors.placeholder}
+          secureTextEntry={secureTextEntry && !revealed}
+          onFocus={(event) => {
+            setFocused(true);
+            onFocus?.(event);
+          }}
+          onBlur={(event) => {
+            setFocused(false);
+            onBlur?.(event);
+          }}
+          {...inputProps}
+        />
+        {secureTextEntry ? (
+          <Pressable
+            style={styles.reveal}
+            onPress={() => setRevealed((current) => !current)}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={revealed ? 'Hide password' : 'Show password'}
+          >
+            <Text style={styles.revealText}>{revealed ? 'Hide' : 'Show'}</Text>
+          </Pressable>
+        ) : null}
+      </View>
     </View>
   );
 });
@@ -45,21 +74,38 @@ const styles = StyleSheet.create({
     fontSize: typography.label,
     fontWeight: '600',
     color: colors.muted,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
+    letterSpacing: 0.2,
   },
-  input: {
+  field: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
     borderRadius: radius.md,
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg - 2,
+    minHeight: 54,
+  },
+  fieldFocused: {
+    backgroundColor: colors.card,
+    borderColor: colors.accent,
+  },
+  fieldInvalid: {
+    backgroundColor: colors.errorSurface,
+    borderColor: colors.errorBorder,
+  },
+  input: {
+    flex: 1,
+    paddingVertical: spacing.lg,
     fontSize: typography.body,
     color: colors.text,
   },
-  inputFocused: {
-    borderColor: colors.accent,
-    backgroundColor: colors.background,
+  reveal: {
+    paddingLeft: spacing.md,
+  },
+  revealText: {
+    fontSize: typography.label,
+    fontWeight: '600',
+    color: colors.accent,
   },
 });

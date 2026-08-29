@@ -23,20 +23,19 @@ export default function SecondaryButton({ label, onPress }: SecondaryButtonProps
 
 const styles = StyleSheet.create({
   button: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingVertical: spacing.lg,
+    borderRadius: radius.pill,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    alignSelf: 'center',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 52,
   },
   buttonPressed: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.accentSoft,
   },
   label: {
-    color: colors.text,
+    color: colors.accent,
     fontSize: typography.body,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });
