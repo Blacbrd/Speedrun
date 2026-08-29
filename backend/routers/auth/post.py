@@ -3,7 +3,7 @@ from supabase import Client
 
 from backend.core.mock_data import MOCK_PLAYER_ID
 from backend.core.network import is_supabase_network_error
-from backend.db.supabase import get_db
+from backend.db.supabase import get_db, new_auth_client
 from backend.schemas.player import PlayerCreate, PlayerLogin
 
 router = APIRouter()
@@ -54,7 +54,11 @@ def signup(payload: PlayerCreate, db: Client = Depends(get_db)):  # noqa: B008
             "id", created.user.id
         ).execute()
 
-    session = db.auth.sign_in_with_password(
+    # sign_in_with_password on a throwaway client, never on `db` - it stores
+    # the resulting session on whatever client calls it, and `db` is the
+    # shared service-role client every other request depends on. See
+    # new_auth_client()'s docstring.
+    session = new_auth_client().auth.sign_in_with_password(
         {"email": payload.email, "password": payload.password}
     )
 
@@ -66,11 +70,11 @@ def signup(payload: PlayerCreate, db: Client = Depends(get_db)):  # noqa: B008
 
 
 @router.post("/login")
-def login(payload: PlayerLogin, db: Client = Depends(get_db)):  # noqa: B008
+def login(payload: PlayerLogin):
     """Falls back to the same fixed mock player as /signup if Supabase is
     unreachable."""
     try:
-        result = db.auth.sign_in_with_password(
+        result = new_auth_client().auth.sign_in_with_password(
             {"email": payload.email, "password": payload.password}
         )
     except Exception as e:  # noqa: BLE001
