@@ -14,7 +14,7 @@ import type { Task } from '../lib/tasks';
 
 export default function Room() {
   const { session, loading: sessionLoading, signOut } = useSession();
-  const location = useCurrentLocation();
+  const location = useCurrentLocation(Boolean(session));
   const { tasks, error: tasksError, loading: tasksLoading } = useTasks(session?.accessToken);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
@@ -76,6 +76,7 @@ export default function Room() {
 
       {selectedTask ? (
         <TaskSubmission
+          key={String(selectedTask.id)}
           task={selectedTask}
           playerId={session.playerId}
           token={session.accessToken}

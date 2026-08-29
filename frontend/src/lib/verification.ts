@@ -12,6 +12,25 @@ type VerifyArgs = {
   token?: string;
 };
 
+const MIME_TYPES: Record<string, string> = {
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  heic: 'image/heic',
+  heif: 'image/heif',
+  webp: 'image/webp',
+  gif: 'image/gif',
+};
+
+function describePhoto(uri: string): { name: string; type: string } {
+  const extension = uri.split('?')[0].split('.').pop()?.toLowerCase() ?? '';
+  const type = MIME_TYPES[extension];
+  if (!type) {
+    return { name: 'submission.jpg', type: 'image/jpeg' };
+  }
+  return { name: `submission.${extension}`, type };
+}
+
 export async function verifyTaskPhoto({
   taskId,
   photoUri,
@@ -26,8 +45,7 @@ export async function verifyTaskPhoto({
   // React Native's FormData accepts this file descriptor shape for uploads.
   form.append('file', {
     uri: photoUri,
-    name: 'submission.jpg',
-    type: 'image/jpeg',
+    ...describePhoto(photoUri),
   } as unknown as Blob);
 
   return postForm<Verification>('/api/gemini/verify', form, token);

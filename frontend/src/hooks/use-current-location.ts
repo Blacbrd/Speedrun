@@ -6,7 +6,8 @@ export type Coordinates = {
   longitude: number;
 };
 
-export function useCurrentLocation() {
+// `enabled` defers the permission prompt until the caller is ready to show a map.
+export function useCurrentLocation(enabled = true) {
   const [coordinates, setCoordinates] = useState<Coordinates | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -35,8 +36,10 @@ export function useCurrentLocation() {
   }, []);
 
   useEffect(() => {
-    request();
-  }, [request]);
+    if (enabled) {
+      request();
+    }
+  }, [enabled, request]);
 
   return { coordinates, error, loading, retry: request };
 }
