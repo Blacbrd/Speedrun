@@ -1,28 +1,29 @@
-import { useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { useRef, useState } from 'react';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { colors } from '../constants/colors';
+import { radius, spacing, typography } from '../constants/theme';
+import PrimaryButton from './primary-button';
+import TextField from './text-field';
 
 type AuthFormProps = {
-  title: string;
   submitLabel: string;
   onSubmit: (email: string, password: string) => Promise<void>;
 };
 
-export default function AuthForm({ title, submitLabel, onSubmit }: AuthFormProps) {
+export default function AuthForm({ submitLabel, onSubmit }: AuthFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const passwordRef = useRef<TextInput>(null);
+
+  const disabled = submitting || email.trim().length === 0 || password.length === 0;
 
   const submit = async () => {
+    if (disabled) {
+      return;
+    }
     setError(null);
     setSubmitting(true);
     try {
@@ -34,85 +35,64 @@ export default function AuthForm({ title, submitLabel, onSubmit }: AuthFormProps
     }
   };
 
-  const disabled = submitting || email.trim().length === 0 || password.length === 0;
-
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{title}</Text>
-
-      <TextInput
-        style={styles.input}
+      <TextField
+        label="Email"
         value={email}
         onChangeText={setEmail}
-        placeholder="Email"
-        placeholderTextColor={colors.muted}
+        placeholder="you@example.com"
         autoCapitalize="none"
+        autoCorrect={false}
         autoComplete="email"
         keyboardType="email-address"
         textContentType="emailAddress"
+        returnKeyType="next"
+        onSubmitEditing={() => passwordRef.current?.focus()}
       />
-      <TextInput
-        style={styles.input}
+
+      <TextField
+        ref={passwordRef}
+        label="Password"
         value={password}
         onChangeText={setPassword}
-        placeholder="Password"
-        placeholderTextColor={colors.muted}
+        placeholder="••••••••"
         autoCapitalize="none"
+        autoCorrect={false}
         secureTextEntry
         textContentType="password"
+        returnKeyType="go"
+        onSubmitEditing={submit}
       />
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? (
+        <View style={styles.errorBox}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      ) : null}
 
-      <Pressable
-        style={[styles.button, disabled && styles.buttonDisabled]}
+      <PrimaryButton
+        label={submitLabel}
         onPress={submit}
         disabled={disabled}
-      >
-        {submitting ? (
-          <ActivityIndicator color={colors.accentText} />
-        ) : (
-          <Text style={styles.buttonText}>{submitLabel}</Text>
-        )}
-      </Pressable>
+        loading={submitting}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    gap: 12,
+    gap: spacing.lg,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 8,
+  errorBox: {
+    backgroundColor: colors.errorSurface,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
   },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: colors.text,
-  },
-  error: {
+  errorText: {
     color: colors.error,
-  },
-  button: {
-    backgroundColor: colors.accent,
-    borderRadius: 8,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  buttonText: {
-    color: colors.accentText,
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: typography.caption,
   },
 });

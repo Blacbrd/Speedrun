@@ -1,9 +1,11 @@
-import { Link, router } from 'expo-router';
+import { router } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import AuthForm from '../components/auth-form';
+import AuthScreen from '../components/auth-screen';
+import SecondaryButton from '../components/secondary-button';
 import { colors } from '../constants/colors';
+import { spacing, typography } from '../constants/theme';
 import { signUp } from '../lib/auth';
 import { saveSession } from '../lib/session-store';
 
@@ -14,34 +16,24 @@ export default function SignUp() {
   };
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <View style={styles.content}>
-        <AuthForm title="Create account" submitLabel="Sign up" onSubmit={submit} />
-        <Text style={styles.footer}>
-          Already have an account? <Link href="/sign-in" style={styles.link}>Sign in</Link>
-        </Text>
+    <AuthScreen tagline="Create an account to start your first run.">
+      <AuthForm submitLabel="Sign up" onSubmit={submit} />
+
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>Already have an account?</Text>
+        <SecondaryButton label="Log in" onPress={() => router.replace('/sign-in')} />
       </View>
-    </SafeAreaView>
+    </AuthScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 24,
-    gap: 16,
-  },
   footer: {
-    color: colors.muted,
-    textAlign: 'center',
+    gap: spacing.md,
   },
-  link: {
-    color: colors.accent,
-    fontWeight: '600',
+  footerText: {
+    textAlign: 'center',
+    color: colors.muted,
+    fontSize: typography.caption,
   },
 });
