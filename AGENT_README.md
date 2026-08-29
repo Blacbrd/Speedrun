@@ -22,6 +22,12 @@ Pydantic mirrors: `backend/schemas/{player,run,task,friendship,verification}.py`
 
 `backend/.env`'s `SUPABASE_KEY` is now the real service-role key (was briefly the anon/publishable key by mistake — fixed). RLS policies are back to strict `auth.uid()`-scoped ones on `player_tasks`, `runs`, and the `task-photos` bucket; the service-role backend bypasses them as intended and does its own `player_id`/`run_id` scoping in code. If you ever hit an RLS error on a backend write that looks correct, don't loosen policies to fix it — that almost certainly means the wrong key is loaded again; check `backend/.env` and ask before changing any RLS policy.
 
+**Signup**: confirm-email is off in the Supabase project. `/api/auth/signup` uses `auth.admin.create_user(email_confirm=True)` (not `auth.sign_up`, which still sends a confirmation email even when you don't need it and burns Supabase's built-in email rate limit — hit this the hard way) and returns a real session immediately, same shape as `/login`.
+
+**`backend/core/config.py`**: reads `.env` by resolving `Path(__file__).parent.parent / ".env"`, not a bare relative `".env"` — a relative path there depends on the process's cwd, which silently loaded the *repo-root* `.env` instead of `backend/.env` whenever uvicorn is started from the repo root (needed for the `backend.main:app` import to resolve). If a `.env` change seems to have no effect, check this hasn't regressed.
+
+**Supabase-down fallback**: `backend/core/network.py` (`is_supabase_network_error`) + `backend/core/mock_data.py`. Auth, `GET /api/tasks/random`, `POST /api/runs/start`, `POST /api/runs/{id}/finish`, and `POST /api/gemini/verify` each catch a genuine Supabase *network* failure (connection/timeout) and transparently serve mock data instead (a fixed dummy player `00000000-0000-0000-0000-000000000001`, 5 mock tasks, in-memory mock runs/player_tasks) — a normal API error (RLS, validation, 404) still fails normally, only real unreachability falls back. This keeps Gemini/Mapbox testable during a Supabase outage without burning any real API limits. If you add a new Supabase-backed endpoint, follow the same pattern: catch the specific exception, check `is_supabase_network_error`, fall back to mock data only on that.
+
 ### Backend endpoints (FastAPI, all under `/api`)
 
 - `POST /api/auth/signup`, `POST /api/auth/login` — Supabase Auth, email/password.
