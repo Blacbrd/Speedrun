@@ -8,12 +8,12 @@ This is a hackathon project built while mobile (phone-only testing, no laptop ac
 
 ## 1. Current state (as of last update)
 
-- **Frontend**: Expo Router app, deliberately stripped to a blank starting point. `src/app/index.tsx` renders a plain white screen with "hi there!" centered — this is the intentional starting point after removing all Expo starter boilerplate (tabs, themed components, demo assets). Nothing else exists yet.
+- **Frontend**: Expo Router app. `src/app/index.tsx` renders "hi there!" plus a link to `/team`. `src/app/team.tsx` shows the team name (`src/constants/team.ts`) and a lap counter (`src/components/lap-counter.tsx`, state in `src/hooks/use-lap-counter.ts`). Lap count is in-memory only, not persisted to the backend.
 - **Backend**: FastAPI app with two working routers:
   - `GET /api/data` — reads from a Supabase `players` table (placeholder/example, not real product logic yet)
   - `GET /api/gemini/status` — confirms the Gemini client constructs from `GEMINI_KEY`; does **not** call the model (construction only, costs zero API requests)
 - **Auth / DB**: Supabase, client wired in `backend/db/supabase.py`, credentials from `.env`.
-- **No real feature has been built yet.** This file, `SETUP.md`, and `ngrok_setup.md` describe scaffolding and dev environment, not product behavior.
+- **Only the team/lap-counter screen exists as product UI; everything else is scaffolding.** This file, `SETUP.md`, and `ngrok_setup.md` describe scaffolding and dev environment, not product behavior.
 
 Setup instructions (installing, running frontend + backend, phone testing over tunnel): see `SETUP.md`. Tunnel/ngrok specifics and troubleshooting: see `ngrok_setup.md`.
 
