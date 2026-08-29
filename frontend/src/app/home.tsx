@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import BrandHeader from '../components/brand-header';
 import RunButton from '../components/run-button';
+import SecondaryButton from '../components/secondary-button';
 import StatStrip from '../components/stat-strip';
 import TrackBackdrop from '../components/track-backdrop';
 import { colors } from '../constants/colors';
@@ -62,6 +63,8 @@ export default function Home() {
 
           <RunButton caption="Start a session" onPress={() => router.push('/mode-select')} />
         </View>
+
+        <SecondaryButton label="Team" onPress={() => router.push('/team')} />
 
         <Pressable
           style={styles.signOut}
