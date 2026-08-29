@@ -18,7 +18,7 @@ export default function BrandHeader({ title, tagline, timer = '00:00.00' }: Bran
           <View style={[styles.mark, glow(colors.glowWarm, 14)]}>
             <Text style={styles.markText}>S</Text>
           </View>
-          <Text style={styles.wordmark}>Speedrun</Text>
+          <Text style={styles.wordmark}>Speedrunners</Text>
         </View>
 
         <View style={styles.clock}>

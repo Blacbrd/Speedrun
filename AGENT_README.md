@@ -8,7 +8,7 @@ This is a hackathon project built while mobile (phone-only testing, no laptop ac
 
 ## 1. Current state (as of last update)
 
-Speedrun is a Strava-style **photo scavenger hunt**: a player starts a timed "run," gets a list of photo tasks ("take a picture of a red car"), and Gemini judges each submitted photo accept/deny. Singleplayer is the current focus; multiplayer is a placeholder button, not built.
+Speedrun is a Strava-style **photo scavenger hunt**: a player starts a timed "run," gets a list of photo tasks ("take a picture of a red car"), and Gemini judges each submitted photo accept/deny. Singleplayer is the core loop; head-to-head multiplayer (invite → ready → shared five tasks → countdown from a server `ends_at`) is built on top of it.
 
 ### Data model (Supabase - all live, see `backend/db/seed_tasks.sql` for the migration history)
 
@@ -26,6 +26,8 @@ Pydantic mirrors: `backend/schemas/{player,run,task,friendship,verification}.py`
 
 **`backend/core/config.py`**: reads `.env` by resolving `Path(__file__).parent.parent / ".env"`, not a bare relative `".env"` — a relative path there depends on the process's cwd, which silently loaded the *repo-root* `.env` instead of `backend/.env` whenever uvicorn is started from the repo root (needed for the `backend.main:app` import to resolve). If a `.env` change seems to have no effect, check this hasn't regressed.
 
+**Never call `auth.sign_in_with_password` (or anything else that sets a session) on `db`/`get_db()`'s client.** That client is a single shared global instance (`backend/db/supabase.py`) used by every route for the life of the process. supabase-py stores whatever session you sign in with directly on the client instance and starts sending that user's JWT instead of the service-role key on every subsequent call *from that same client* — so signing in on the shared client means the next request from any other player silently runs as whichever user logged in last, and RLS rejects any write that isn't theirs. This was a real, already-shipped bug (intermittent "new row violates row-level security policy" on `runs`/`player_tasks`, looked like a policy problem, wasn't). Fix/pattern: use `new_auth_client()` (also in `backend/db/supabase.py`) — a fresh disposable client — for `sign_in_with_password`/`sign_up`; `auth.admin.*` calls (e.g. `create_user`) are fine on the shared client, they don't touch its session. Follow this pattern for any new auth-adjacent endpoint.
+
 **Supabase-down fallback**: `backend/core/network.py` (`is_supabase_network_error`) + `backend/core/mock_data.py`. Auth, `GET /api/tasks/random`, `POST /api/runs/start`, `POST /api/runs/{id}/finish`, and `POST /api/gemini/verify` each catch a genuine Supabase *network* failure (connection/timeout) and transparently serve mock data instead (a fixed dummy player `00000000-0000-0000-0000-000000000001`, 5 mock tasks, in-memory mock runs/player_tasks) — a normal API error (RLS, validation, 404) still fails normally, only real unreachability falls back. This keeps Gemini/Mapbox testable during a Supabase outage without burning any real API limits. If you add a new Supabase-backed endpoint, follow the same pattern: catch the specific exception, check `is_supabase_network_error`, fall back to mock data only on that.
 
 ### Backend endpoints (FastAPI, all under `/api`)
@@ -41,11 +43,17 @@ Pydantic mirrors: `backend/schemas/{player,run,task,friendship,verification}.py`
 
 The two parallel frontends have been reconciled on PR #2 (`devin/1788005848-frontend-auth-map`) into the single flow of section 1a; `main`'s placeholder set (`login`/`signup`/`home`/`run`/`singleplayer`, `AuthForm`/`Button`/`TextField`/`MapPanel`/`TaskList`, `theme.ts`) and PR #2's old `room.tsx` are both gone.
 
-Current routes: `index` (session gate) → `sign-in`/`sign-up` → `home` (circular Run! pad) → `mode-select` → `singleplayer` (live map + `/api/tasks/random` + Regenerate + Start run!) → `run` (count-up timer, 80% Mapbox map, top-right task overlay, End run) → `camera` (photo → `/api/gemini/verify`, retry on `response: false`). `home` also has a "Team" button → `team` (team name from `constants/team.ts` + the `lap-counter` component; the count is in-memory only, not persisted or backed by an endpoint).
+Current routes: `index` (session gate) → `sign-in`/`sign-up` → `home` (circular Run! pad) → `mode-select` → `singleplayer` (live map + `/api/tasks/random` + Regenerate + Start run!) → `run` (count-up timer, 80% Mapbox map, top-right task overlay, End run) → `camera` (photo → `/api/gemini/verify`, retry on `response: false`); the multiplayer lane is `mode-select` (friend invite modal) → `match` (lobby/room) → `match-camera` (photo → `/api/matches/{id}/verify`). `home` also has a "Team" button → `team` (team name from `constants/team.ts` + the `lap-counter` component; the count is in-memory only, not persisted or backed by an endpoint).
 
 Supporting code: reusable UI in `components/` (kebab-case files: `auth-screen`, `auth-form`, `brand-header`, `stat-strip`, `track-backdrop`, `primary-button`, `secondary-button`, `text-field`, `run-button`, `task-list`, `task-overlay`, `live-map` + `mapbox-native-map{,.web}`/`mapbox-webview-map`); API clients per resource in `lib/` (`api.ts` transport, `auth.ts`, `tasks.ts`, `runs.ts`, `verification.ts`) with the session in `expo-secure-store` via `lib/session-store.ts`; hooks in `hooks/` (`use-session`, `use-current-location`, `use-random-tasks`, `use-photo-verification`, `use-elapsed-seconds`, and `use-active-run` — the context holding `run_id` + task list + completed ids shared between the run and camera screens).
 
+Multiplayer-specific frontend code: `lib/supabase.ts` (anon-key Supabase JS client; `attachSupabaseSession` replays the backend session via `auth.setSession` so Realtime passes RLS — the service-role key must never appear in `frontend/`), `lib/matches.ts` (all `/api/matches` calls), `lib/players.ts` (resolves the two test accounts' player ids), `components/{friend-invite-modal,time-limit-picker,match-scoreboard,hud-toast}`, hooks `use-match-room` (Realtime on `matches`/`match_players`/`match_tasks`, REST polling fallback when `EXPO_PUBLIC_SUPABASE_*` is unset), `use-invite-listener`, `use-location-broadcast`, `use-remaining-seconds` (countdown from the server `ends_at`), `use-match-verification`.
+
 **Mapbox**: `EXPO_PUBLIC_MAPBOX_TOKEN` is set in `frontend/.env` (gitignored, ask the human for the value, don't invent one) and the Mapbox MCP server (`mapbox-mcp`) is installed for tool access. **Stay within Mapbox's free tier** (50k free map loads/month on the pk. token used here) — this is a hackathon demo, not production traffic; don't loop map reloads, don't hit the API in a tight loop while testing, and flag it to the human before doing anything that could run up usage (e.g. automated screenshot loops hitting live tiles).
+
+### Multiplayer (backend + frontend built - see `multiplayer.md`)
+
+Two players compete head-to-head via `matches`/`match_players`/`match_tasks` tables + Supabase Realtime (Postgres Changes) - full endpoint reference, Realtime/RLS setup, and a two-device testing walkthrough are in `multiplayer.md`, don't duplicate that here. Two real test accounts already exist for this: `blacbrd123@gmail.com` and `aayanjatala@icloud.com`.
 
 ### 1a. Target UI flow (implemented on PR #2)
 
