@@ -8,12 +8,51 @@ This is a hackathon project built while mobile (phone-only testing, no laptop ac
 
 ## 1. Current state (as of last update)
 
-- **Frontend**: Expo Router app. `src/app/index.tsx` redirects to `/login` or `/home` based on the stored user id; `/home` links out to `/run` (mode picker → `/singleplayer`) and `/team`. `src/app/team.tsx` shows the team name (`src/constants/team.ts`) and a lap counter (`src/components/lap-counter.tsx`, state in `src/hooks/use-lap-counter.ts`); the lap count is in-memory only, not persisted to the backend. Shared colors/spacing live in `src/theme.ts`, backend calls in `src/lib/api.ts`.
-- **Backend**: FastAPI app with two working routers:
-  - `GET /api/data` — reads from a Supabase `players` table (placeholder/example, not real product logic yet)
-  - `GET /api/gemini/status` — confirms the Gemini client constructs from `GEMINI_KEY`; does **not** call the model (construction only, costs zero API requests)
-- **Auth / DB**: Supabase, client wired in `backend/db/supabase.py`, credentials from `.env`.
-- This file, `SETUP.md`, and `ngrok_setup.md` describe scaffolding and dev environment, not product behavior.
+Speedrun is a Strava-style **photo scavenger hunt**: a player starts a timed "run," gets a list of photo tasks ("take a picture of a red car"), and Gemini judges each submitted photo accept/deny. Singleplayer is the current focus; multiplayer is a placeholder button, not built.
+
+### Data model (Supabase - all live, see `backend/db/seed_tasks.sql` for the migration history)
+
+- `players` — id (= `auth.users.id`), email, username, score. Auto-created by a DB trigger on Supabase Auth signup.
+- `runs` — one timed play session: player_id, mode (`singleplayer`/`multiplayer`), started_at, ended_at, duration_seconds, tasks_completed, score.
+- `tasks` — the photo challenges: title, description ("Take a photo of ..."), difficulty (easy/medium/hard), score. 50 seeded.
+- `player_tasks` — one row per **attempt**, keyed by `(run_id, task_id)` (not `(player_id, task_id)` — the same task can be re-attempted in a different run and each attempt keeps its own photo/result). Columns: player_id, task_id, run_id, status (assigned/submitted/verified/rejected), photo_url, completed_at. The photo's id is this row's `id`.
+- Storage bucket `task-photos` (public) — one file per attempt, path `{player_id}/{task_id}-{uuid}.{ext}`.
+
+Pydantic mirrors: `backend/schemas/{player,run,task,friendship,verification}.py`.
+
+**Known gap**: `backend/.env`'s `SUPABASE_KEY` is currently behaving like the anon key, not the service-role key the backend needs to act as a trusted server. Until it's replaced, some writes (photo upload, `player_tasks`/`runs` writes) rely on temporarily-public RLS policies plus the backend's own `player_id`/`run_id` scoping in code, not DB-enforced isolation. If you hit an RLS error on a write that looks correct, this is why — don't paper over it with more permissive policies without flagging it; ask first.
+
+### Backend endpoints (FastAPI, all under `/api`)
+
+- `POST /api/auth/signup`, `POST /api/auth/login` — Supabase Auth, email/password.
+- `GET /api/tasks/` — all tasks. `GET /api/tasks/random?player_id=&count=5` — a fresh random draw excluding tasks that player has already verified (the "regenerate" button). `POST /api/tasks/{id}/grab` — assign a task (legacy, may not be needed once runs+random are used).
+- `POST /api/runs/start` `{player_id, mode}` → creates a run, returns it (has `id`). Call when the player presses "Start run!".
+- `POST /api/runs/{run_id}/finish` `{duration_seconds}` → stamps `ended_at`, rolls up `tasks_completed`/`score` from that run's verified `player_tasks`.
+- `POST /api/gemini/verify` (multipart: `task_id`, `player_id`, `run_id`, `file`) → uploads the photo to `task-photos`, asks Gemini (`gemini-2.5-flash`) for a **strict** `{"response": true|false}` verdict (system prompt in `backend/routers/gemini/post.py`), upserts the `player_tasks` row for `(run_id, task_id)`, returns `{response: bool, message: str, photo_url: str}` — `message` is a friendly retry line on `false`, not part of Gemini's own strict output.
+- `GET /api/gemini/status` — Gemini client construction check only, no API call.
+
+### Frontend
+
+Two things exist right now and need to be reconciled into **one** flow (see section 1a) — do not keep both:
+
+1. On `main`: a plain/DRY placeholder set built for a fast working demo — `login`/`signup` (shared `AuthForm`), `home` (map + "Run" button), `run` (mode picker), `singleplayer` (map + task list). Components: `Button`, `TextField`, `MapPanel` (react-native-maps + expo-location, a stand-in until Mapbox is wired), `TaskList`. `frontend/src/lib/api.ts` is the backend client, session in `expo-secure-store`. `home` also has a "Team" button → `team` (team name from `src/constants/team.ts` + `lap-counter` component, count in-memory only, not persisted).
+2. On PR #2 (`devin/1788005848-frontend-auth-map`): nicer UI (`sign-in`/`sign-up`, card layout, pill buttons, reusable `auth-form`/`auth-screen`/`brand-header`/`primary-button`/`secondary-button`/`text-field`), plus a `room.tsx` with a real Mapbox map (`@rnmapbox/maps`, native + `.web.tsx` variants) and a task list wired to `/api/gemini/verify`.
+
+**Mapbox**: `EXPO_PUBLIC_MAPBOX_TOKEN` is set in `frontend/.env` (gitignored, ask the human for the value, don't invent one) and the Mapbox MCP server (`mapbox-mcp`) is installed for tool access. **Stay within Mapbox's free tier** (50k free map loads/month on the pk. token used here) — this is a hackathon demo, not production traffic; don't loop map reloads, don't hit the API in a tight loop while testing, and flag it to the human before doing anything that could run up usage (e.g. automated screenshot loops hitting live tiles).
+
+### 1a. Target UI flow (build this — replace both of the above)
+
+Keep PR #2's visual polish (cards/pills/palette), rebuild the page structure to this exact flow:
+
+1. **Home** (after login): a big circle button at the bottom of the screen labeled "Run!".
+2. **Mode select**: pressing the circle navigates here. Two buttons, each taking half the screen: "Singleplayer" and "Multiplayer" (multiplayer can be a disabled/placeholder for now).
+3. **Singleplayer setup**: shows the player's live location on a map, and a generated task list (`GET /api/tasks/random`). A **Regenerate** button re-draws the list (calls `/api/tasks/random` again). A **Start run!** button calls `POST /api/runs/start` and navigates to the run screen with the returned `run_id` and the current task list.
+4. **Run screen** (the core screen):
+   - A timer counting up from 0 (like Strava), started on entry.
+   - The player's live location on a map taking **80%** of the screen.
+   - Top-right corner: a task overlay control. Tapping it opens an overlay listing the current run's tasks, showing which are done; tapping an unfinished task opens the camera.
+   - Camera page: takes a photo, POSTs it to `/api/gemini/verify` with `task_id`, `player_id`, `run_id`. On `response: true` → mark that task done in the UI, navigate back to the run screen. On `response: false` → show the returned `message` string at the top (friendly "try again"-style copy) and let them retry.
+   - Ending the run calls `POST /api/runs/{run_id}/finish` with the elapsed seconds.
 
 Setup instructions (installing, running frontend + backend, phone testing over tunnel): see `SETUP.md`. Tunnel/ngrok specifics and troubleshooting: see `ngrok_setup.md`.
 
@@ -49,8 +88,10 @@ backend/
       get.py             # GET routes for that feature
       post.py             # POST routes (create as needed, same pattern)
       __init__.py
+    # existing: auth/, tasks/, runs/, gemini/, db/
   schemas/
     <feature>.py         # Pydantic request/response models, one file per feature/domain
+    # existing: player.py, run.py, task.py, friendship.py, verification.py
 ```
 
 Rules:
