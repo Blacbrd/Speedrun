@@ -1,17 +1,16 @@
-import Constants, { ExecutionEnvironment } from 'expo-constants';
-import { lazy, Suspense } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../constants/colors';
 import { MAPBOX_TOKEN } from '../constants/config';
 import type { Coordinates } from '../hooks/use-current-location';
 import MapboxWebViewMap from './mapbox-webview-map';
 
-// @rnmapbox/maps is a native module, so it cannot be loaded inside Expo Go.
-// Lazy so its module body only runs in builds that actually contain it.
-const MapboxNativeMap = lazy(() => import('./mapbox-native-map'));
-
-const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+// @rnmapbox/maps (mapbox-native-map.tsx) is a native module - it needs a
+// custom dev client/EAS build, and Metro's default bundler resolves every
+// static import even behind lazy()/dynamic import() (no real code-splitting
+// without extra config), so merely importing it here breaks the bundle for
+// everyone, including plain Expo Go. Use the WebView map unconditionally
+// until there's a custom dev client to gate the native path behind.
 
 type LiveMapProps = {
   center: Coordinates;
@@ -29,15 +28,7 @@ export default function LiveMap({ center }: LiveMapProps) {
     );
   }
 
-  if (isExpoGo) {
-    return <MapboxWebViewMap center={center} />;
-  }
-
-  return (
-    <Suspense fallback={<ActivityIndicator style={styles.loader} color={colors.accent} />}>
-      <MapboxNativeMap center={center} />
-    </Suspense>
-  );
+  return <MapboxWebViewMap center={center} />;
 }
 
 const styles = StyleSheet.create({
@@ -51,8 +42,5 @@ const styles = StyleSheet.create({
   placeholderText: {
     color: colors.text,
     textAlign: 'center',
-  },
-  loader: {
-    flex: 1,
   },
 });
