@@ -25,13 +25,22 @@ expo-env.d.ts
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+*.log
+logs/
 
 # macOS
 .DS_Store
 *.pem
 
-# local env files
-.env*.local
+# Windows
+Thumbs.db
+desktop.ini
+
+# env files (real secrets stay local, never committed)
+.env
+.env.local
+.env.*.local
+backend/.env
 
 # typescript
 *.tsbuildinfo
@@ -42,4 +51,23 @@ example
 /ios
 /android
 
-.env
+# Python / backend
+.venv/
+backend/.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# editors
+.vscode/
+.idea/
+*.swp
+
+# claude / local tooling scratch
+.claude/settings.local.json
