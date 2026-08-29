@@ -1,62 +1,73 @@
-import * as SecureStore from 'expo-secure-store';
+import { API_BASE_URL } from '../constants/config';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL;
+export class ApiError extends Error {
+  status: number;
 
-const ACCESS_TOKEN_KEY = 'speedrun_access_token';
-const USER_ID_KEY = 'speedrun_user_id';
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+  }
+}
 
-async function request(path: string, options: RequestInit = {}) {
-  const res = await fetch(`${API_URL}${path}`, {
-    ...options,
+async function parse<T>(response: Response): Promise<T> {
+  const body = await response.text();
+  let payload: unknown = null;
+
+  if (body.length > 0) {
+    try {
+      payload = JSON.parse(body);
+    } catch {
+      payload = body;
+    }
+  }
+
+  if (!response.ok) {
+    throw new ApiError(response.status, detailOf(payload) ?? `Request failed (${response.status})`);
+  }
+
+  return payload as T;
+}
+
+function detailOf(payload: unknown): string | null {
+  if (typeof payload === 'string' && payload.length > 0) {
+    return payload;
+  }
+  if (payload && typeof payload === 'object' && 'detail' in payload) {
+    const detail = (payload as { detail: unknown }).detail;
+    if (typeof detail === 'string') {
+      return detail;
+    }
+    return JSON.stringify(detail);
+  }
+  return null;
+}
+
+export async function get<T>(path: string, token?: string): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+  return parse<T>(response);
+}
+
+export async function postJson<T>(path: string, body: unknown, token?: string): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'ngrok-skip-browser-warning': 'true',
-      ...options.headers,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
+    body: JSON.stringify(body),
   });
-
-  const text = await res.text();
-  const data = text ? JSON.parse(text) : null;
-
-  if (!res.ok) {
-    throw new Error(data?.detail ?? `Request failed (${res.status})`);
-  }
-
-  return data;
+  return parse<T>(response);
 }
 
-export async function signup(email: string, password: string, username?: string) {
-  return request('/api/auth/signup', {
+export async function postForm<T>(path: string, form: FormData, token?: string): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
     method: 'POST',
-    body: JSON.stringify({ email, password, username }),
+    // Content-Type is set by the runtime so the multipart boundary is correct.
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    body: form,
   });
-}
-
-export async function login(email: string, password: string) {
-  const data = await request('/api/auth/login', {
-    method: 'POST',
-    body: JSON.stringify({ email, password }),
-  });
-
-  if (data.access_token) {
-    await SecureStore.setItemAsync(ACCESS_TOKEN_KEY, data.access_token);
-  }
-  if (data.user_id) {
-    await SecureStore.setItemAsync(USER_ID_KEY, data.user_id);
-  }
-
-  return data;
-}
-
-export async function getStoredUserId() {
-  return SecureStore.getItemAsync(USER_ID_KEY);
-}
-
-export async function logout() {
-  await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
-  await SecureStore.deleteItemAsync(USER_ID_KEY);
-}
-
-export async function fetchTasks() {
-  return request('/api/tasks/');
+  return parse<T>(response);
 }

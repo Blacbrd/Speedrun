@@ -1,7 +1,8 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { colors } from '../constants/colors';
+import { hudLabel, monoFont, radius, spacing, typography } from '../constants/theme';
 import { useLapCounter } from '../hooks/use-lap-counter';
-import { colors, spacing } from '../theme';
 
 export default function LapCounter() {
   const { laps, addLap, removeLap, resetLaps } = useLapCounter();
@@ -10,15 +11,32 @@ export default function LapCounter() {
     <View style={styles.container}>
       <Text style={styles.label}>Laps</Text>
       <Text style={styles.count}>{laps}</Text>
+
       <View style={styles.row}>
-        <Pressable style={styles.button} onPress={removeLap} accessibilityLabel="Remove a lap">
+        <Pressable
+          style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
+          onPress={removeLap}
+          accessibilityRole="button"
+          accessibilityLabel="Remove a lap"
+        >
           <Text style={styles.buttonText}>-</Text>
         </Pressable>
-        <Pressable style={styles.button} onPress={addLap} accessibilityLabel="Add a lap">
+        <Pressable
+          style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
+          onPress={addLap}
+          accessibilityRole="button"
+          accessibilityLabel="Add a lap"
+        >
           <Text style={styles.buttonText}>+</Text>
         </Pressable>
       </View>
-      <Pressable style={styles.reset} onPress={resetLaps} accessibilityLabel="Reset laps">
+
+      <Pressable
+        style={styles.reset}
+        onPress={resetLaps}
+        accessibilityRole="button"
+        accessibilityLabel="Reset laps"
+      >
         <Text style={styles.resetText}>Reset</Text>
       </Pressable>
     </View>
@@ -28,41 +46,45 @@ export default function LapCounter() {
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
+    gap: spacing.sm,
   },
-  label: {
-    fontSize: 16,
-    color: colors.muted,
-  },
+  label: hudLabel,
   count: {
-    fontSize: 64,
-    fontWeight: '600',
+    fontFamily: monoFont,
+    fontSize: typography.display + 24,
+    fontWeight: '900',
+    letterSpacing: -2,
     color: colors.text,
   },
   row: {
     flexDirection: 'row',
-    gap: spacing.md,
-    marginTop: spacing.sm,
+    gap: spacing.lg,
   },
   button: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
+    width: 72,
+    height: 72,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    backgroundColor: colors.accentSoft,
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonPressed: {
+    opacity: 0.7,
   },
   buttonText: {
-    fontSize: 28,
-    color: colors.primaryText,
-    fontWeight: '600',
+    fontSize: typography.title + 6,
+    fontWeight: '900',
+    color: colors.accent,
   },
   reset: {
-    marginTop: spacing.md,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
   },
   resetText: {
-    fontSize: 16,
-    color: colors.primary,
+    ...hudLabel,
+    fontSize: typography.label,
+    color: colors.muted,
   },
 });

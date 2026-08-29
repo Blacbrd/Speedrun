@@ -20,7 +20,13 @@ Speedrun is a Strava-style **photo scavenger hunt**: a player starts a timed "ru
 
 Pydantic mirrors: `backend/schemas/{player,run,task,friendship,verification}.py`.
 
-**Known gap**: `backend/.env`'s `SUPABASE_KEY` is currently behaving like the anon key, not the service-role key the backend needs to act as a trusted server. Until it's replaced, some writes (photo upload, `player_tasks`/`runs` writes) rely on temporarily-public RLS policies plus the backend's own `player_id`/`run_id` scoping in code, not DB-enforced isolation. If you hit an RLS error on a write that looks correct, this is why — don't paper over it with more permissive policies without flagging it; ask first.
+`backend/.env`'s `SUPABASE_KEY` is now the real service-role key (was briefly the anon/publishable key by mistake — fixed). RLS policies are back to strict `auth.uid()`-scoped ones on `player_tasks`, `runs`, and the `task-photos` bucket; the service-role backend bypasses them as intended and does its own `player_id`/`run_id` scoping in code. If you ever hit an RLS error on a backend write that looks correct, don't loosen policies to fix it — that almost certainly means the wrong key is loaded again; check `backend/.env` and ask before changing any RLS policy.
+
+**Signup**: confirm-email is off in the Supabase project. `/api/auth/signup` uses `auth.admin.create_user(email_confirm=True)` (not `auth.sign_up`, which still sends a confirmation email even when you don't need it and burns Supabase's built-in email rate limit — hit this the hard way) and returns a real session immediately, same shape as `/login`.
+
+**`backend/core/config.py`**: reads `.env` by resolving `Path(__file__).parent.parent / ".env"`, not a bare relative `".env"` — a relative path there depends on the process's cwd, which silently loaded the *repo-root* `.env` instead of `backend/.env` whenever uvicorn is started from the repo root (needed for the `backend.main:app` import to resolve). If a `.env` change seems to have no effect, check this hasn't regressed.
+
+**Supabase-down fallback**: `backend/core/network.py` (`is_supabase_network_error`) + `backend/core/mock_data.py`. Auth, `GET /api/tasks/random`, `POST /api/runs/start`, `POST /api/runs/{id}/finish`, and `POST /api/gemini/verify` each catch a genuine Supabase *network* failure (connection/timeout) and transparently serve mock data instead (a fixed dummy player `00000000-0000-0000-0000-000000000001`, 5 mock tasks, in-memory mock runs/player_tasks) — a normal API error (RLS, validation, 404) still fails normally, only real unreachability falls back. This keeps Gemini/Mapbox testable during a Supabase outage without burning any real API limits. If you add a new Supabase-backed endpoint, follow the same pattern: catch the specific exception, check `is_supabase_network_error`, fall back to mock data only on that.
 
 ### Backend endpoints (FastAPI, all under `/api`)
 
@@ -33,14 +39,15 @@ Pydantic mirrors: `backend/schemas/{player,run,task,friendship,verification}.py`
 
 ### Frontend
 
-Two things exist right now and need to be reconciled into **one** flow (see section 1a) — do not keep both:
+The two parallel frontends have been reconciled on PR #2 (`devin/1788005848-frontend-auth-map`) into the single flow of section 1a; `main`'s placeholder set (`login`/`signup`/`home`/`run`/`singleplayer`, `AuthForm`/`Button`/`TextField`/`MapPanel`/`TaskList`, `theme.ts`) and PR #2's old `room.tsx` are both gone.
 
-1. On `main`: a plain/DRY placeholder set built for a fast working demo — `login`/`signup` (shared `AuthForm`), `home` (map + "Run" button), `run` (mode picker), `singleplayer` (map + task list). Components: `Button`, `TextField`, `MapPanel` (react-native-maps + expo-location, a stand-in until Mapbox is wired), `TaskList`. `frontend/src/lib/api.ts` is the backend client, session in `expo-secure-store`. `home` also has a "Team" button → `team` (team name from `src/constants/team.ts` + `lap-counter` component, count in-memory only, not persisted).
-2. On PR #2 (`devin/1788005848-frontend-auth-map`): nicer UI (`sign-in`/`sign-up`, card layout, pill buttons, reusable `auth-form`/`auth-screen`/`brand-header`/`primary-button`/`secondary-button`/`text-field`), plus a `room.tsx` with a real Mapbox map (`@rnmapbox/maps`, native + `.web.tsx` variants) and a task list wired to `/api/gemini/verify`.
+Current routes: `index` (session gate) → `sign-in`/`sign-up` → `home` (circular Run! pad) → `mode-select` → `singleplayer` (live map + `/api/tasks/random` + Regenerate + Start run!) → `run` (count-up timer, 80% Mapbox map, top-right task overlay, End run) → `camera` (photo → `/api/gemini/verify`, retry on `response: false`). `home` also has a "Team" button → `team` (team name from `constants/team.ts` + the `lap-counter` component; the count is in-memory only, not persisted or backed by an endpoint).
+
+Supporting code: reusable UI in `components/` (kebab-case files: `auth-screen`, `auth-form`, `brand-header`, `stat-strip`, `track-backdrop`, `primary-button`, `secondary-button`, `text-field`, `run-button`, `task-list`, `task-overlay`, `live-map` + `mapbox-native-map{,.web}`/`mapbox-webview-map`); API clients per resource in `lib/` (`api.ts` transport, `auth.ts`, `tasks.ts`, `runs.ts`, `verification.ts`) with the session in `expo-secure-store` via `lib/session-store.ts`; hooks in `hooks/` (`use-session`, `use-current-location`, `use-random-tasks`, `use-photo-verification`, `use-elapsed-seconds`, and `use-active-run` — the context holding `run_id` + task list + completed ids shared between the run and camera screens).
 
 **Mapbox**: `EXPO_PUBLIC_MAPBOX_TOKEN` is set in `frontend/.env` (gitignored, ask the human for the value, don't invent one) and the Mapbox MCP server (`mapbox-mcp`) is installed for tool access. **Stay within Mapbox's free tier** (50k free map loads/month on the pk. token used here) — this is a hackathon demo, not production traffic; don't loop map reloads, don't hit the API in a tight loop while testing, and flag it to the human before doing anything that could run up usage (e.g. automated screenshot loops hitting live tiles).
 
-### 1a. Target UI flow (build this — replace both of the above)
+### 1a. Target UI flow (implemented on PR #2)
 
 Keep PR #2's visual polish (cards/pills/palette), rebuild the page structure to this exact flow:
 

@@ -3,6 +3,8 @@ import random
 from fastapi import APIRouter, Depends, HTTPException
 from supabase import Client
 
+from backend.core.mock_data import MOCK_TASKS, mock_random_tasks
+from backend.core.network import is_supabase_network_error
 from backend.db.supabase import get_db
 
 router = APIRouter()
@@ -17,6 +19,8 @@ def list_tasks(db: Client = Depends(get_db)):  # noqa: B008
         response = db.table("tasks").select("*").execute()
         return response.data
     except Exception as e:  # noqa: BLE001
+        if is_supabase_network_error(e):
+            return MOCK_TASKS
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -29,7 +33,8 @@ def random_tasks(
     """A fresh random draw of tasks for a run - the 'regenerate' button.
 
     Excludes tasks the player has already verified, so regenerating doesn't
-    keep handing back completed ones.
+    keep handing back completed ones. Falls back to mock tasks if Supabase
+    is unreachable.
     """
     try:
         all_tasks = db.table("tasks").select("*").execute().data
@@ -48,6 +53,8 @@ def random_tasks(
 
         return random.sample(all_tasks, k=min(count, len(all_tasks)))
     except Exception as e:  # noqa: BLE001
+        if is_supabase_network_error(e):
+            return mock_random_tasks(count)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 

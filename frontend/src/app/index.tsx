@@ -1,25 +1,28 @@
-import { router } from 'expo-router';
-import { useEffect } from 'react';
+import { Redirect } from 'expo-router';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
-import { getStoredUserId } from '../lib/api';
-import { colors } from '../theme';
+import { colors } from '../constants/colors';
+import { useSession } from '../hooks/use-session';
 
 export default function Index() {
-  useEffect(() => {
-    (async () => {
-      const userId = await getStoredUserId();
-      router.replace(userId ? '/home' : '/login');
-    })();
-  }, []);
+  const { session, loading } = useSession();
 
-  return (
-    <View style={styles.container}>
-      <ActivityIndicator />
-    </View>
-  );
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator color={colors.accent} />
+      </View>
+    );
+  }
+
+  return <Redirect href={session ? '/home' : '/sign-in'} />;
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' },
+  container: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.background,
+  },
 });

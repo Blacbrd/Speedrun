@@ -8,6 +8,8 @@ from google.genai import types
 from supabase import Client
 
 from backend.core.config import settings
+from backend.core.mock_data import mock_task_by_id, mock_upsert_player_task
+from backend.core.network import is_supabase_network_error
 from backend.db.supabase import get_db
 from backend.schemas.verification import GeminiVerdict, TaskVerification
 
@@ -75,8 +77,13 @@ async def verify_task_photo(
     upserts the matching player_tasks row - keyed per run, so retrying a
     task across different runs keeps each attempt's own photo and result.
     """
-    task_resp = db.table("tasks").select("*").eq("id", task_id).single().execute()
-    task = task_resp.data
+    try:
+        task_resp = db.table("tasks").select("*").eq("id", task_id).single().execute()
+        task = task_resp.data
+    except Exception as e:  # noqa: BLE001
+        if not is_supabase_network_error(e):
+            raise HTTPException(status_code=500, detail=str(e)) from e
+        task = mock_task_by_id(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
@@ -93,7 +100,12 @@ async def verify_task_photo(
         )
         photo_url = db.storage.from_(BUCKET).get_public_url(path)
     except Exception as e:  # noqa: BLE001
-        raise HTTPException(status_code=502, detail=f"Photo upload failed: {e}") from e
+        if not is_supabase_network_error(e):
+            raise HTTPException(status_code=502, detail=f"Photo upload failed: {e}") from e
+        # Supabase Storage is unreachable - Gemini itself doesn't depend on
+        # it, so keep going with a clearly-fake url instead of failing the
+        # whole verification.
+        photo_url = f"mock://unavailable-storage/{path}"
 
     client = genai.Client(api_key=settings.gemini_key)
     task_prompt = f'Task: "{task["title"]}" - {task["description"]}'
@@ -119,16 +131,22 @@ async def verify_task_photo(
         raise HTTPException(status_code=502, detail="Gemini returned no verdict")
 
     if player_id and run_id:
-        row = {
-            "player_id": player_id,
-            "task_id": task_id,
-            "run_id": run_id,
-            "status": "verified" if verdict.response else "rejected",
-            "photo_url": photo_url,
-        }
-        if verdict.response:
-            row["completed_at"] = datetime.now(UTC).isoformat()
-        db.table("player_tasks").upsert(row, on_conflict="run_id,task_id").execute()
+        status = "verified" if verdict.response else "rejected"
+        try:
+            row = {
+                "player_id": player_id,
+                "task_id": task_id,
+                "run_id": run_id,
+                "status": status,
+                "photo_url": photo_url,
+            }
+            if verdict.response:
+                row["completed_at"] = datetime.now(UTC).isoformat()
+            db.table("player_tasks").upsert(row, on_conflict="run_id,task_id").execute()
+        except Exception as e:  # noqa: BLE001
+            if not is_supabase_network_error(e):
+                raise HTTPException(status_code=500, detail=str(e)) from e
+            mock_upsert_player_task(player_id, task_id, run_id, status, photo_url)
 
     message = "Nice! Task complete." if verdict.response else random.choice(RETRY_MESSAGES)
     return TaskVerification(response=verdict.response, message=message, photo_url=photo_url)
