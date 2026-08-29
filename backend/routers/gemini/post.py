@@ -63,14 +63,17 @@ def _extension_for(mime_type: str | None) -> str:
 async def verify_task_photo(
     task_id: str = Form(...),
     player_id: str | None = Form(None),
+    run_id: str | None = Form(None),
     file: UploadFile = File(...),
     db: Client = Depends(get_db),  # noqa: B008
 ):
     """Submit a photo for a task; Gemini decides accept/deny.
 
-    Uploads the photo to the `task-photos` storage bucket, asks Gemini for a
-    strict {response: true/false} verdict, and (if `player_id` is given)
-    upserts the matching player_tasks row to verified/rejected.
+    Uploads the photo to the `task-photos` storage bucket (one file per
+    attempt, named by a fresh id), asks Gemini for a strict
+    {response: true/false} verdict, and (if `player_id`+`run_id` are given)
+    upserts the matching player_tasks row - keyed per run, so retrying a
+    task across different runs keeps each attempt's own photo and result.
     """
     task_resp = db.table("tasks").select("*").eq("id", task_id).single().execute()
     task = task_resp.data
@@ -115,16 +118,17 @@ async def verify_task_photo(
     if verdict is None:
         raise HTTPException(status_code=502, detail="Gemini returned no verdict")
 
-    if player_id:
+    if player_id and run_id:
         row = {
             "player_id": player_id,
             "task_id": task_id,
+            "run_id": run_id,
             "status": "verified" if verdict.response else "rejected",
             "photo_url": photo_url,
         }
         if verdict.response:
             row["completed_at"] = datetime.now(UTC).isoformat()
-        db.table("player_tasks").upsert(row, on_conflict="player_id,task_id").execute()
+        db.table("player_tasks").upsert(row, on_conflict="run_id,task_id").execute()
 
     message = "Nice! Task complete." if verdict.response else random.choice(RETRY_MESSAGES)
     return TaskVerification(response=verdict.response, message=message, photo_url=photo_url)
