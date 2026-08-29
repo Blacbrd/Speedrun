@@ -49,6 +49,10 @@ Supporting code: reusable UI in `components/` (kebab-case files: `auth-screen`, 
 
 **Mapbox**: `EXPO_PUBLIC_MAPBOX_TOKEN` is set in `frontend/.env` (gitignored, ask the human for the value, don't invent one) and the Mapbox MCP server (`mapbox-mcp`) is installed for tool access. **Stay within Mapbox's free tier** (50k free map loads/month on the pk. token used here) — this is a hackathon demo, not production traffic; don't loop map reloads, don't hit the API in a tight loop while testing, and flag it to the human before doing anything that could run up usage (e.g. automated screenshot loops hitting live tiles).
 
+### Multiplayer (backend done, frontend not built yet - see `multiplayer.md`)
+
+Two players compete head-to-head via `matches`/`match_players`/`match_tasks` tables + Supabase Realtime (Postgres Changes) - full endpoint reference, Realtime/RLS setup, and a two-device testing walkthrough are in `multiplayer.md`, don't duplicate that here. Two real test accounts already exist for this: `blacbrd123@gmail.com` and `aayanjatala@icloud.com`.
+
 ### 1a. Target UI flow (implemented on PR #2)
 
 Keep PR #2's visual polish (cards/pills/palette), rebuild the page structure to this exact flow:
