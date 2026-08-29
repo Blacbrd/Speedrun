@@ -33,14 +33,15 @@ Pydantic mirrors: `backend/schemas/{player,run,task,friendship,verification}.py`
 
 ### Frontend
 
-Two things exist right now and need to be reconciled into **one** flow (see section 1a) — do not keep both:
+The two parallel frontends have been reconciled on PR #2 (`devin/1788005848-frontend-auth-map`) into the single flow of section 1a; `main`'s placeholder set (`login`/`signup`/`home`/`run`/`singleplayer`, `AuthForm`/`Button`/`TextField`/`MapPanel`/`TaskList`, `theme.ts`) and PR #2's old `room.tsx` are both gone.
 
-1. On `main`: a plain/DRY placeholder set built for a fast working demo — `login`/`signup` (shared `AuthForm`), `home` (map + "Run" button), `run` (mode picker), `singleplayer` (map + task list). Components: `Button`, `TextField`, `MapPanel` (react-native-maps + expo-location, a stand-in until Mapbox is wired), `TaskList`. `frontend/src/lib/api.ts` is the backend client, session in `expo-secure-store`.
-2. On PR #2 (`devin/1788005848-frontend-auth-map`): nicer UI (`sign-in`/`sign-up`, card layout, pill buttons, reusable `auth-form`/`auth-screen`/`brand-header`/`primary-button`/`secondary-button`/`text-field`), plus a `room.tsx` with a real Mapbox map (`@rnmapbox/maps`, native + `.web.tsx` variants) and a task list wired to `/api/gemini/verify`.
+Current routes: `index` (session gate) → `sign-in`/`sign-up` → `home` (circular Run! pad) → `mode-select` → `singleplayer` (live map + `/api/tasks/random` + Regenerate + Start run!) → `run` (count-up timer, 80% Mapbox map, top-right task overlay, End run) → `camera` (photo → `/api/gemini/verify`, retry on `response: false`).
+
+Supporting code: reusable UI in `components/` (kebab-case files: `auth-screen`, `auth-form`, `brand-header`, `stat-strip`, `track-backdrop`, `primary-button`, `secondary-button`, `text-field`, `run-button`, `task-list`, `task-overlay`, `live-map` + `mapbox-native-map{,.web}`/`mapbox-webview-map`); API clients per resource in `lib/` (`api.ts` transport, `auth.ts`, `tasks.ts`, `runs.ts`, `verification.ts`) with the session in `expo-secure-store` via `lib/session-store.ts`; hooks in `hooks/` (`use-session`, `use-current-location`, `use-random-tasks`, `use-photo-verification`, `use-elapsed-seconds`, and `use-active-run` — the context holding `run_id` + task list + completed ids shared between the run and camera screens).
 
 **Mapbox**: `EXPO_PUBLIC_MAPBOX_TOKEN` is set in `frontend/.env` (gitignored, ask the human for the value, don't invent one) and the Mapbox MCP server (`mapbox-mcp`) is installed for tool access. **Stay within Mapbox's free tier** (50k free map loads/month on the pk. token used here) — this is a hackathon demo, not production traffic; don't loop map reloads, don't hit the API in a tight loop while testing, and flag it to the human before doing anything that could run up usage (e.g. automated screenshot loops hitting live tiles).
 
-### 1a. Target UI flow (build this — replace both of the above)
+### 1a. Target UI flow (implemented on PR #2)
 
 Keep PR #2's visual polish (cards/pills/palette), rebuild the page structure to this exact flow:
 
