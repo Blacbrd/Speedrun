@@ -1,8 +1,15 @@
 from pydantic import BaseModel
 
 
-class TaskVerification(BaseModel):
-    """Gemini's judgement on whether a submitted photo satisfies a task."""
+class GeminiVerdict(BaseModel):
+    """The exact, strict shape Gemini itself must return - nothing else."""
 
-    match: bool
-    reason: str
+    response: bool
+
+
+class TaskVerification(BaseModel):
+    """API response: Gemini's verdict plus a user-facing message."""
+
+    response: bool
+    message: str
+    photo_url: str | None = None
