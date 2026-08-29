@@ -1,4 +1,5 @@
 import { Redirect, router } from 'expo-router';
+import { useCallback } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -8,10 +9,20 @@ import StatStrip from '../components/stat-strip';
 import TrackBackdrop from '../components/track-backdrop';
 import { colors } from '../constants/colors';
 import { hudLabel, spacing } from '../constants/theme';
+import { useInviteListener } from '../hooks/use-invite-listener';
 import { useSession } from '../hooks/use-session';
+import type { Match } from '../lib/matches';
 
 export default function Home() {
   const { session, loading, signOut } = useSession();
+
+  // An invite arrives as a matches INSERT naming this player; jump into the room.
+  useInviteListener(
+    session?.playerId ?? null,
+    useCallback((match: Match) => {
+      router.push({ pathname: '/match', params: { matchId: match.id } });
+    }, []),
+  );
 
   if (loading) {
     return (

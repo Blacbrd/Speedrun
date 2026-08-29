@@ -1,10 +1,16 @@
 import { router } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import FriendInviteModal from '../components/friend-invite-modal';
 import TrackBackdrop from '../components/track-backdrop';
 import { colors } from '../constants/colors';
+import { DEFAULT_TIME_LIMIT_SECONDS } from '../constants/friends';
 import { hudLabel, radius, spacing, typography } from '../constants/theme';
+import { useSession } from '../hooks/use-session';
+import { inviteToMatch } from '../lib/matches';
+import { fetchFriendPlayers, type FriendPlayer } from '../lib/players';
 
 type ModeCardProps = {
   title: string;
@@ -36,6 +42,54 @@ function ModeCard({ title, caption, badge, disabled = false, onPress }: ModeCard
 }
 
 export default function ModeSelect() {
+  const { session } = useSession();
+  const [inviteVisible, setInviteVisible] = useState(false);
+  const [friends, setFriends] = useState<FriendPlayer[]>([]);
+  const [friendsLoading, setFriendsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [invitingPlayerId, setInvitingPlayerId] = useState<string | null>(null);
+
+  const openInvites = useCallback(async () => {
+    if (!session?.playerId) {
+      return;
+    }
+    setInviteVisible(true);
+    setFriendsLoading(true);
+    setError(null);
+    try {
+      setFriends(await fetchFriendPlayers(session.playerId));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not load opponents');
+    } finally {
+      setFriendsLoading(false);
+    }
+  }, [session?.playerId]);
+
+  const invite = useCallback(
+    async (friend: FriendPlayer) => {
+      if (!session?.playerId) {
+        return;
+      }
+      setInvitingPlayerId(friend.playerId);
+      setError(null);
+      try {
+        const match = await inviteToMatch(
+          session.playerId,
+          friend.playerId,
+          DEFAULT_TIME_LIMIT_SECONDS,
+          session.accessToken,
+        );
+        setInviteVisible(false);
+        router.push({ pathname: '/match', params: { matchId: match.id } });
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : 'Could not send the invite');
+      } finally {
+        setInvitingPlayerId(null);
+      }
+    },
+    [session?.accessToken, session?.playerId],
+  );
+
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <TrackBackdrop />
@@ -57,10 +111,20 @@ export default function ModeSelect() {
         <ModeCard
           badge="Lane 02"
           title="Multiplayer"
-          caption="Coming soon — race friends in real time."
-          disabled
+          caption="Invite a friend and race the same five tasks."
+          onPress={openInvites}
         />
       </View>
+
+      <FriendInviteModal
+        visible={inviteVisible}
+        friends={friends}
+        loading={friendsLoading}
+        error={error}
+        invitingPlayerId={invitingPlayerId}
+        onClose={() => setInviteVisible(false)}
+        onInvite={invite}
+      />
     </SafeAreaView>
   );
 }

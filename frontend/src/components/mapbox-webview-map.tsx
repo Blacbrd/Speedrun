@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { StyleSheet } from 'react-native';
 import { WebView } from 'react-native-webview';
 
@@ -6,6 +7,7 @@ import type { Coordinates } from '../hooks/use-current-location';
 
 type MapboxWebViewMapProps = {
   center: Coordinates;
+  opponent?: Coordinates | null;
   zoom?: number;
 };
 
@@ -33,7 +35,26 @@ function html(center: Coordinates, zoom: number): string {
         center: [${center.longitude}, ${center.latitude}],
         zoom: ${zoom},
       });
-      new mapboxgl.Marker().setLngLat([${center.longitude}, ${center.latitude}]).addTo(map);
+      const me = new mapboxgl.Marker().setLngLat([${center.longitude}, ${center.latitude}]).addTo(map);
+      let opponent = null;
+
+      // Markers move through these hooks instead of re-rendering the page, so
+      // position updates never re-download map tiles.
+      window.setSelf = function (longitude, latitude) {
+        me.setLngLat([longitude, latitude]);
+      };
+      window.setOpponent = function (longitude, latitude) {
+        if (longitude === null || latitude === null) {
+          if (opponent) { opponent.remove(); opponent = null; }
+          return;
+        }
+        if (!opponent) {
+          opponent = new mapboxgl.Marker({ color: '#ff3b3b' }).setLngLat([longitude, latitude]).addTo(map);
+          opponent.setPopup(new mapboxgl.Popup({ closeButton: false }).setText('Opponent'));
+          return;
+        }
+        opponent.setLngLat([longitude, latitude]);
+      };
     </script>
   </body>
 </html>`;
@@ -41,12 +62,34 @@ function html(center: Coordinates, zoom: number): string {
 
 // Mapbox GL JS in a WebView: the only Mapbox renderer that runs inside Expo Go,
 // which has no @rnmapbox/maps native module. Native builds use MapboxNativeMap.
-export default function MapboxWebViewMap({ center, zoom = 15 }: MapboxWebViewMapProps) {
+export default function MapboxWebViewMap({ center, opponent = null, zoom = 15 }: MapboxWebViewMapProps) {
+  const webview = useRef<WebView>(null);
+  // The page is built once from the first fix; later positions are injected.
+  const source = useRef({ html: html(center, zoom), baseUrl: 'https://localhost' });
+
+  useEffect(() => {
+    webview.current?.injectJavaScript(
+      `window.setSelf && window.setSelf(${center.longitude}, ${center.latitude}); true;`,
+    );
+  }, [center.latitude, center.longitude]);
+
+  const opponentLatitude = opponent?.latitude ?? null;
+  const opponentLongitude = opponent?.longitude ?? null;
+
+  useEffect(() => {
+    const args =
+      opponentLatitude === null || opponentLongitude === null
+        ? 'null, null'
+        : `${opponentLongitude}, ${opponentLatitude}`;
+    webview.current?.injectJavaScript(`window.setOpponent && window.setOpponent(${args}); true;`);
+  }, [opponentLatitude, opponentLongitude]);
+
   return (
     <WebView
+      ref={webview}
       style={styles.map}
       originWhitelist={['*']}
-      source={{ html: html(center, zoom), baseUrl: 'https://localhost' }}
+      source={source.current}
       javaScriptEnabled
       scrollEnabled={false}
     />
