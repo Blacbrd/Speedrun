@@ -16,8 +16,8 @@ from backend.schemas.verification import GeminiVerdict, TaskVerification
 router = APIRouter()
 
 # Small, fast, vision-capable model - free-tier friendly, cheap enough for a
-# per-submission check.
-VERIFY_MODEL = "gemini-2.5-flash"
+# per-submission check. gemini-2.5-flash was retired; 3.5 is current.
+VERIFY_MODEL = "gemini-3.5-flash"
 
 BUCKET = "task-photos"
 
