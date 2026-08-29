@@ -8,12 +8,14 @@ This is a hackathon project built while mobile (phone-only testing, no laptop ac
 
 ## 1. Current state (as of last update)
 
-- **Frontend**: Expo Router app, deliberately stripped to a blank starting point. `src/app/index.tsx` renders a plain white screen with "hi there!" centered — this is the intentional starting point after removing all Expo starter boilerplate (tabs, themed components, demo assets). Nothing else exists yet.
-- **Backend**: FastAPI app with two working routers:
+- **Frontend**: Expo Router app with the first real flow: `index.tsx` reads the stored session and redirects to `sign-in` or `room`; `sign-in.tsx`/`sign-up.tsx` call the backend auth endpoints and persist the session in `expo-secure-store`; `room.tsx` shows a Mapbox map centered on the device location plus the task list, and submits a task photo for Gemini verification.
+  - Map rendering is split: `@rnmapbox/maps` (native builds) and Mapbox GL JS in a WebView (Expo Go, which has no native module). `src/components/room-map.tsx` picks between them.
+  - Frontend env vars live in `frontend/.env` (`frontend/.env.example`), read only in `src/constants/config.ts`.
+- **Backend**: FastAPI app with these working routers:
   - `GET /api/data` — reads from a Supabase `players` table (placeholder/example, not real product logic yet)
   - `GET /api/gemini/status` — confirms the Gemini client constructs from `GEMINI_KEY`; does **not** call the model (construction only, costs zero API requests)
+  - `GET /api/tasks` — returns the seeded photo tasks from the Supabase `tasks` table
 - **Auth / DB**: Supabase, client wired in `backend/db/supabase.py`, credentials from `.env`.
-- **No real feature has been built yet.** This file, `SETUP.md`, and `ngrok_setup.md` describe scaffolding and dev environment, not product behavior.
 
 Setup instructions (installing, running frontend + backend, phone testing over tunnel): see `SETUP.md`. Tunnel/ngrok specifics and troubleshooting: see `ngrok_setup.md`.
 
@@ -71,10 +73,12 @@ frontend/
     components/           # Reusable UI components. One component per file, named after the component (kebab-case filename, PascalCase export).
     hooks/                # Custom hooks, one hook per file (`use-thing.ts`)
     constants/             # Shared constants (colors, spacing, config values) — no magic numbers/strings duplicated across components
-    lib/ or services/      # API clients (calls to the backend), one file per backend resource/domain
+    lib/                  # API clients (calls to the backend) + secure session storage, one file per backend resource/domain
   assets/
     images/                # Only assets actually referenced by app.json or code. Don't leave in unused starter images — check references before adding or keeping.
-  app.json                 # Expo config — icon/splash/plugin references must stay in sync with assets/ actually present
+  app.json                 # Static Expo config — icon/splash/plugin references must stay in sync with assets/ actually present
+  app.config.js             # Dynamic Expo config: spreads app.json and adds plugins needing env values (Mapbox download token)
+  .env / .env.example        # Expo env vars; only EXPO_PUBLIC_* reach the app bundle
 ```
 
 Rules:

@@ -1,21 +1,28 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Redirect } from 'expo-router';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
+
+import { colors } from '../constants/colors';
+import { useSession } from '../hooks/use-session';
 
 export default function Index() {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.text}>hi there!</Text>
-    </View>
-  );
+  const { session, loading } = useSession();
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator color={colors.accent} />
+      </View>
+    );
+  }
+
+  return <Redirect href={session ? '/room' : '/sign-in'} />;
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  text: {
-    fontSize: 20,
   },
 });
