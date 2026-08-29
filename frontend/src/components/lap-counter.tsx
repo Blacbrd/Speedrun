@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useLapCounter } from '../hooks/use-lap-counter';
+import { colors, spacing } from '../theme';
 
 export default function LapCounter() {
   const { laps, addLap, removeLap, resetLaps } = useLapCounter();
@@ -30,37 +31,38 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 16,
-    color: '#666',
+    color: colors.muted,
   },
   count: {
     fontSize: 64,
     fontWeight: '600',
+    color: colors.text,
   },
   row: {
     flexDirection: 'row',
-    gap: 16,
-    marginTop: 8,
+    gap: spacing.md,
+    marginTop: spacing.sm,
   },
   button: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: '#208AEF',
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   buttonText: {
     fontSize: 28,
-    color: '#fff',
+    color: colors.primaryText,
     fontWeight: '600',
   },
   reset: {
-    marginTop: 16,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    marginTop: spacing.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
   },
   resetText: {
     fontSize: 16,
-    color: '#208AEF',
+    color: colors.primary,
   },
 });

@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import LapCounter from '../components/lap-counter';
 import { TEAM_NAME } from '../constants/team';
+import { colors, spacing } from '../theme';
 
 export default function Team() {
   return (
@@ -15,13 +16,14 @@ export default function Team() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 32,
+    gap: spacing.lg,
   },
   teamName: {
     fontSize: 28,
     fontWeight: '600',
+    color: colors.text,
   },
 });
