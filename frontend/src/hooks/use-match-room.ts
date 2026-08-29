@@ -61,8 +61,12 @@ export function useMatchRoom({ matchId, playerId, token }: Options) {
       return;
     }
 
+    // Unique per effect run (not just per matchId) for the same reason as
+    // use-invite-listener: StrictMode's dev double-invoke would otherwise
+    // grab the same already-subscribed channel object and throw on the
+    // second .on() call.
     const channel = supabase
-      .channel(`match-${matchId}`)
+      .channel(`match-${matchId}:${Math.random().toString(36).slice(2)}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'matches', filter: `id=eq.${matchId}` },
