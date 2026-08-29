@@ -4,8 +4,7 @@ import { StyleSheet, Text } from 'react-native';
 import AuthForm from '../components/auth-form';
 import AuthScreen from '../components/auth-screen';
 import SecondaryButton from '../components/secondary-button';
-import { colors } from '../constants/colors';
-import { typography } from '../constants/theme';
+import { hudLabel } from '../constants/theme';
 import { signIn } from '../lib/auth';
 import { saveSession } from '../lib/session-store';
 
@@ -17,11 +16,17 @@ export default function SignIn() {
 
   return (
     <AuthScreen
-      title="Welcome back"
-      tagline="Race the clock. Photograph the city."
+      title="Back on the start line"
+      tagline="Race the clock. Photograph the city. Beat your split."
+      lane="Lane 01 · Log in"
+      stats={[
+        { label: 'Tasks', value: '50' },
+        { label: 'Tiers', value: '3' },
+        { label: 'Gps', value: 'On' },
+      ]}
       footer={
         <>
-          <Text style={styles.footerText}>New here?</Text>
+          <Text style={styles.footerText}>No runner profile yet?</Text>
           <SecondaryButton label="Create an account" onPress={() => router.push('/sign-up')} />
         </>
       }
@@ -33,8 +38,7 @@ export default function SignIn() {
 
 const styles = StyleSheet.create({
   footerText: {
+    ...hudLabel,
     textAlign: 'center',
-    color: colors.muted,
-    fontSize: typography.caption,
   },
 });

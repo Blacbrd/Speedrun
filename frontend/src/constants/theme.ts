@@ -1,4 +1,4 @@
-import { Platform, type ViewStyle } from 'react-native';
+import { Platform, type TextStyle, type ViewStyle } from 'react-native';
 
 import { colors } from './colors';
 
@@ -21,28 +21,39 @@ export const radius = {
 };
 
 export const typography = {
-  display: 34,
+  display: 40,
   title: 22,
   body: 16,
   label: 13,
   caption: 14,
+  micro: 11,
 };
 
-// Cross-platform elevation; iOS gets a soft shadow, Android an elevation value.
-export function shadow(level: 'card' | 'button'): ViewStyle {
-  const card = level === 'card';
+// Condensed numeric/HUD readouts (timers, stats) use the platform mono face.
+export const monoFont = Platform.select({
+  ios: 'Menlo',
+  android: 'monospace',
+  default: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+});
+
+export const hudLabel: TextStyle = {
+  fontSize: typography.micro,
+  fontWeight: '700',
+  letterSpacing: 1.6,
+  textTransform: 'uppercase',
+  color: colors.muted,
+};
+
+// Cross-platform elevation; iOS/web get a soft glow, Android an elevation value.
+export function glow(color: string, strength = 18): ViewStyle {
   return Platform.select<ViewStyle>({
     ios: {
-      shadowColor: colors.shadow,
-      shadowOpacity: card ? 0.06 : 0.22,
-      shadowRadius: card ? 24 : 14,
-      shadowOffset: { width: 0, height: card ? 12 : 8 },
+      shadowColor: color,
+      shadowOpacity: 0.6,
+      shadowRadius: strength,
+      shadowOffset: { width: 0, height: 6 },
     },
-    android: { elevation: card ? 2 : 4 },
-    default: {
-      boxShadow: card
-        ? `0 12px 24px rgba(11, 18, 32, 0.06)`
-        : `0 8px 14px rgba(11, 18, 32, 0.22)`,
-    },
+    android: { elevation: 6 },
+    default: { boxShadow: `0 6px ${strength * 1.4}px ${color}` },
   }) as ViewStyle;
 }

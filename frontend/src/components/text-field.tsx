@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 
 import { colors } from '../constants/colors';
-import { radius, spacing, typography } from '../constants/theme';
+import { hudLabel, radius, spacing, typography } from '../constants/theme';
 
 type TextFieldProps = TextInputProps & {
   label: string;
@@ -25,14 +25,11 @@ const TextField = forwardRef<TextInput, TextFieldProps>(function TextField(
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={[styles.label, focused && styles.labelFocused]}>{label}</Text>
       <View
-        style={[
-          styles.field,
-          focused && styles.fieldFocused,
-          invalid && styles.fieldInvalid,
-        ]}
+        style={[styles.field, focused && styles.fieldFocused, invalid && styles.fieldInvalid]}
       >
+        <View style={[styles.rail, focused && styles.railFocused, invalid && styles.railInvalid]} />
         <TextInput
           ref={ref}
           style={[styles.input, style]}
@@ -68,44 +65,58 @@ export default TextField;
 
 const styles = StyleSheet.create({
   container: {
-    gap: spacing.sm,
+    gap: spacing.xs + 2,
   },
   label: {
-    fontSize: typography.label,
-    fontWeight: '600',
-    color: colors.muted,
-    letterSpacing: 0.2,
+    ...hudLabel,
+  },
+  labelFocused: {
+    color: colors.accent,
   },
   field: {
     flexDirection: 'row',
     alignItems: 'center',
+    overflow: 'hidden',
     backgroundColor: colors.surface,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
+    borderWidth: 1,
+    borderColor: colors.border,
     borderRadius: radius.md,
-    paddingHorizontal: spacing.lg,
-    minHeight: 54,
+    paddingRight: spacing.lg,
+    minHeight: 50,
   },
   fieldFocused: {
-    backgroundColor: colors.card,
     borderColor: colors.accent,
+    backgroundColor: colors.backgroundLift,
   },
   fieldInvalid: {
-    backgroundColor: colors.errorSurface,
     borderColor: colors.errorBorder,
+    backgroundColor: colors.errorSurface,
+  },
+  // Lane marker down the left edge of every input.
+  rail: {
+    width: 3,
+    alignSelf: 'stretch',
+    backgroundColor: colors.hairline,
+  },
+  railFocused: {
+    backgroundColor: colors.accent,
+  },
+  railInvalid: {
+    backgroundColor: colors.error,
   },
   input: {
     flex: 1,
-    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md + 2,
     fontSize: typography.body,
+    fontWeight: '600',
     color: colors.text,
   },
   reveal: {
-    paddingLeft: spacing.md,
+    paddingLeft: spacing.sm,
   },
   revealText: {
-    fontSize: typography.label,
-    fontWeight: '600',
+    ...hudLabel,
     color: colors.accent,
   },
 });

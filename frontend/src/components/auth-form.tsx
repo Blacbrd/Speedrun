@@ -86,7 +86,7 @@ export default function AuthForm({ submitLabel, onSubmit }: AuthFormProps) {
 
 const styles = StyleSheet.create({
   container: {
-    gap: spacing.xl,
+    gap: spacing.lg,
   },
   errorBox: {
     flexDirection: 'row',
@@ -94,8 +94,10 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     backgroundColor: colors.errorSurface,
     borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.errorBorder,
     padding: spacing.md,
-    marginTop: -spacing.sm,
+    marginTop: -spacing.xs,
   },
   errorBar: {
     width: 3,

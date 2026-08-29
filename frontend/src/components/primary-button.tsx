@@ -1,7 +1,7 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../constants/colors';
-import { radius, shadow, spacing, typography } from '../constants/theme';
+import { glow, radius, spacing, typography } from '../constants/theme';
 
 type PrimaryButtonProps = {
   label: string;
@@ -22,7 +22,7 @@ export default function PrimaryButton({
     <Pressable
       style={({ pressed }) => [
         styles.button,
-        !inactive && shadow('button'),
+        !inactive && glow(colors.glowWarm, 16),
         pressed && styles.buttonPressed,
         inactive && styles.buttonDisabled,
       ]}
@@ -35,7 +35,12 @@ export default function PrimaryButton({
       {loading ? (
         <ActivityIndicator color={colors.accentText} />
       ) : (
-        <Text style={styles.label}>{label}</Text>
+        <>
+          <Text style={[styles.label, inactive && styles.labelDisabled]}>{label}</Text>
+          <View style={styles.chevrons}>
+            <Text style={[styles.chevron, inactive && styles.labelDisabled]}>›››</Text>
+          </View>
+        </>
       )}
     </Pressable>
   );
@@ -43,11 +48,13 @@ export default function PrimaryButton({
 
 const styles = StyleSheet.create({
   button: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
     backgroundColor: colors.accent,
     borderRadius: radius.pill,
     paddingVertical: spacing.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
     minHeight: 56,
   },
   buttonPressed: {
@@ -55,12 +62,27 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   buttonDisabled: {
-    backgroundColor: colors.borderStrong,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   label: {
     color: colors.accentText,
     fontSize: typography.body,
-    fontWeight: '700',
-    letterSpacing: 0.2,
+    fontWeight: '900',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
+  labelDisabled: {
+    color: colors.muted,
+  },
+  chevrons: {
+    justifyContent: 'center',
+  },
+  chevron: {
+    color: colors.accentText,
+    fontSize: typography.label,
+    fontWeight: '900',
+    letterSpacing: -1,
   },
 });

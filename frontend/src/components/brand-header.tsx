@@ -1,20 +1,32 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../constants/colors';
-import { radius, shadow, spacing, typography } from '../constants/theme';
+import { glow, hudLabel, monoFont, radius, spacing, typography } from '../constants/theme';
 
 type BrandHeaderProps = {
   title: string;
   tagline?: string;
+  timer?: string;
 };
 
-export default function BrandHeader({ title, tagline }: BrandHeaderProps) {
+// HUD-style masthead: wordmark + live race clock, then the screen title.
+export default function BrandHeader({ title, tagline, timer = '00:00.00' }: BrandHeaderProps) {
   return (
     <View style={styles.container}>
-      <View style={[styles.logo, shadow('button')]}>
-        <Text style={styles.logoMark}>S</Text>
+      <View style={styles.topRow}>
+        <View style={styles.wordmarkRow}>
+          <View style={[styles.mark, glow(colors.glowWarm, 14)]}>
+            <Text style={styles.markText}>S</Text>
+          </View>
+          <Text style={styles.wordmark}>Speedrun</Text>
+        </View>
+
+        <View style={styles.clock}>
+          <View style={styles.liveDot} />
+          <Text style={styles.clockText}>{timer}</Text>
+        </View>
       </View>
-      <Text style={styles.name}>Speedrun</Text>
+
       <Text style={styles.title}>{title}</Text>
       {tagline ? <Text style={styles.tagline}>{tagline}</Text> : null}
     </View>
@@ -23,43 +35,71 @@ export default function BrandHeader({ title, tagline }: BrandHeaderProps) {
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'center',
+    gap: spacing.md,
   },
-  logo: {
-    width: 68,
-    height: 68,
-    borderRadius: radius.lg,
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  wordmarkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  mark: {
+    width: 34,
+    height: 34,
+    borderRadius: radius.sm,
     backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logoMark: {
+  markText: {
     color: colors.accentText,
-    fontSize: 36,
-    fontWeight: '800',
-    letterSpacing: -1,
+    fontSize: 20,
+    fontWeight: '900',
   },
-  name: {
-    marginTop: spacing.lg,
+  wordmark: {
+    ...hudLabel,
+    color: colors.text,
     fontSize: typography.label,
+  },
+  clock: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs + 2,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 5,
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.accent,
+  },
+  clockText: {
+    fontFamily: monoFont,
+    fontSize: typography.micro,
     fontWeight: '700',
+    letterSpacing: 0.6,
     color: colors.accent,
-    letterSpacing: 2,
-    textTransform: 'uppercase',
   },
   title: {
     marginTop: spacing.sm,
     fontSize: typography.display,
-    fontWeight: '700',
+    lineHeight: typography.display + 2,
+    fontWeight: '900',
+    letterSpacing: -1.4,
     color: colors.text,
-    letterSpacing: -0.8,
-    textAlign: 'center',
+    textTransform: 'uppercase',
   },
   tagline: {
-    marginTop: spacing.sm,
     fontSize: typography.caption,
     lineHeight: 20,
     color: colors.muted,
-    textAlign: 'center',
   },
 });

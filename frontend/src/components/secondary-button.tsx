@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text } from 'react-native';
 
 import { colors } from '../constants/colors';
-import { radius, spacing, typography } from '../constants/theme';
+import { hudLabel, radius, spacing, typography } from '../constants/theme';
 
 type SecondaryButtonProps = {
   label: string;
@@ -34,8 +34,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accentSoft,
   },
   label: {
+    ...hudLabel,
+    fontSize: typography.label,
     color: colors.accent,
-    fontSize: typography.body,
-    fontWeight: '700',
   },
 });
